@@ -16,7 +16,6 @@ Usage:
 """
 
 import argparse
-import fcntl
 from contextlib import contextmanager
 import glob
 import hashlib
@@ -28,6 +27,38 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+# Cross-platform file locking
+try:
+    import portalocker
+    _USE_PORTALOCKER = True
+except ImportError:
+    _USE_PORTALOCKER = False
+    try:
+        import fcntl
+        _USE_FCNTL = True
+    except ImportError:
+        _USE_FCNTL = False
+
+
+def _lock_file(fd, exclusive=True):
+    """Acquire a file lock (cross-platform)."""
+    if _USE_PORTALOCKER:
+        portalocker.lock(fd, portalocker.LOCK_EX if exclusive else portalocker.LOCK_SH)
+    elif _USE_FCNTL:
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+    # else: no locking available - proceed without (single-user mode)
+
+
+def _unlock_file(fd):
+    """Release a file lock (cross-platform)."""
+    try:
+        if _USE_PORTALOCKER:
+            portalocker.unlock(fd)
+        elif _USE_FCNTL:
+            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+    except Exception:
+        pass
 
 try:
     import memvid_sdk as mv
@@ -194,17 +225,11 @@ def _memvid_locked(mv2_path: str, mode: str = 'auto'):
     os.makedirs(os.path.dirname(mv2_path), exist_ok=True)
     lock_fd = open(lock_path, 'w')
     try:
-        if mode == 'open':
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_SH)
-        else:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        _lock_file(lock_fd, exclusive=(mode != 'open'))
         mem = mv.use('basic', mv2_path, mode=mode)
         yield mem
     finally:
-        try:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-        except Exception:
-            pass
+        _unlock_file(lock_fd)
         lock_fd.close()
 
 
@@ -995,7 +1020,7 @@ def _locked_read_modify_write(filepath: str, modifier_fn) -> None:
             f.write('')
 
     with open(filepath, 'r+') as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        _lock_file(f, exclusive=True)
         try:
             content = f.read()
             new_content = modifier_fn(content)
@@ -1003,7 +1028,7 @@ def _locked_read_modify_write(filepath: str, modifier_fn) -> None:
             f.truncate()
             f.write(new_content)
         finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            _unlock_file(f)
 
 
 def _build_wiki_page(
