@@ -111,7 +111,7 @@ Under 60 seconds from clone to first search.
 ```bash
 git clone https://github.com/[repo]
 cd knowledge-engine
-pip install -r requirements.txt    # memvid-sdk + pymupdf
+pip install -r requirements.txt    # memvid-sdk + pymupdf + portalocker
 
 # Ingest the included demo data
 python3 bridge.py ingest demo/sample-proposal.md demo-client
@@ -146,6 +146,8 @@ Memvid is optional. Without it, the system runs as a wiki-only knowledge base wi
 | `repair` | Fix corrupted archives | `bridge.py repair` |
 
 Supported source formats: `.md`, `.txt`, `.pdf`
+
+**Platform support:** macOS, Linux, Windows. File locking uses `portalocker` (cross-platform). Falls back to `fcntl` on Unix or no-lock single-user mode if neither is available.
 
 ---
 
