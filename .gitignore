@@ -15,6 +15,13 @@ sources/claude-export/
 memvid/.*.mv2.*
 memvid/.sync-manifest.json
 
+# Private operational data (contains client names, file paths, entity data)
+log.md
+schema/entities.json
+schema/graph.json
+schema/tags.json
+index.md
+
 # Private wiki content (client data, project memories, brain files)
 wiki/amazon-a-luxe/
 wiki/archived-research-buddy/
