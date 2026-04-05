@@ -61,6 +61,8 @@ def _unlock_file(fd):
         pass
 
 try:
+    if os.environ.get('MEMVID_DISABLE', '').strip() in ('1', 'true', 'yes'):
+        raise ImportError('Disabled via MEMVID_DISABLE env var')
     import memvid_sdk as mv
     # Validate expected API exists
     for attr in ('use', 'create'):

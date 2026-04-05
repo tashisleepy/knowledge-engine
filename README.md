@@ -12,7 +12,7 @@ Knowledge Engine takes your source documents and creates two synchronized layers
 
 The Bridge is the Python script that keeps both layers in lockstep. Without it, you have two separate tools doing different things. With it, every ingest is one atomic operation that writes the wiki page and the memory frame simultaneously, keeps them hashed against each other, and alerts you when they drift.
 
-**Fair warning:** If you have fewer than 50 documents, the wiki layer alone does the job. The Memvid layer and the Bridge add real value at scale (500+ documents, multiple clients or projects). Memvid is optional by design - start with the wiki, add the machine layer when you outgrow grep.
+Memvid is optional by design. The wiki layer handles the job at any practical document count. Start with the wiki. Add the machine layer only if you genuinely need sub-5ms semantic search across thousands of pages.
 
 ---
 
@@ -205,26 +205,27 @@ knowledge-engine/
 
 ---
 
-## Why the Bridge Matters (Honest Version)
+## Why Not Just Use a Vector DB?
 
-At 5 wiki pages, you don't need the Bridge. Grep finds anything in under 50ms. The wiki alone is plenty.
+You don't need one. Seriously.
 
-At 500 pages across 20 clients, grep takes seconds and misses semantic matches. You need a machine layer. But a machine layer alone is opaque - you can't browse a .mv2 file, you can't audit what the AI "knows," and you can't hand a binary archive to a colleague and say "read this."
+A well-organized folder of markdown files with grep handles 500+ documents without breaking a sweat. Full-text search on 500 markdown files takes under a second. You know your own vocabulary - you wrote the docs. Grep finds them.
 
-That's the real scale where the Bridge earns its complexity:
+The entire vector DB ecosystem (Pinecone, ChromaDB, Weaviate, pgvector) solves a problem most teams don't have. They add infrastructure, embedding drift, re-indexing pipelines, and monthly bills to something a filesystem already handles.
 
-| Scale | Wiki Only | Wiki + Bridge + Memvid |
+**What this project does instead:**
+
+Wiki pages are markdown. You can read them. Open them in Obsidian. Send them to a colleague. Grep across them. No embeddings to maintain. No servers to run. No databases to migrate.
+
+The Memvid layer is optional. It adds sub-5ms semantic search for the edge case where you have thousands of pages and need fuzzy matching across languages or synonyms. Most people won't need it. The wiki is the product.
+
+| Scale | Wiki (grep) | Wiki + Memvid |
 |---|---|---|
-| 5 pages | Works fine, use this | Overkill |
-| 50 pages | Still fine | Starting to help |
-| 500 pages | Search takes 2-3s, misses related concepts | 2ms, finds connections across clients |
-| 5,000 pages | Unusable without indexing | Still 2ms |
+| 50 pages | Instant | Unnecessary |
+| 500 pages | Under 1 second | Nice to have |
+| 5,000 pages | 2-3 seconds | Earns its keep |
 
-The Bridge is not magic. It's a sync layer between two formats optimized for different consumers: humans read markdown, machines search embeddings. The engineering pattern is real - it's just premature at small scale.
-
-If you're one person with 20 documents, use the wiki alone. Memvid is optional for a reason.
-
-If you're a consulting firm with 500+ source documents across a dozen engagements and you need an analyst to find "what did we learn about supply chain risk in GCC last year" in under a second - that's what this is for.
+The Bridge keeps both in sync so you never have to choose. But if you forced us to pick one layer, we'd pick the wiki every time. Humans need to read what the AI knows. A .mv2 file can't give you that. A markdown folder can.
 
 ---
 
