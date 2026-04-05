@@ -1,0 +1,13 @@
+*.mv2
+*.mv2.lock
+*.lock
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+wiki/test-*/
+memvid/per-client/
+sources/conversations/
+sources/pdfs/
+sources/emails/
+memvid/.*.mv2.*

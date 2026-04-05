@@ -1,0 +1,2 @@
+memvid-sdk>=2.0.0
+pymupdf>=1.23.0

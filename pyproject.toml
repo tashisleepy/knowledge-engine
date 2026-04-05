@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "knowledge-engine"
+version = "0.1.0"
+description = "Fusion knowledge management: LLM Wiki + Memvid memory layer"
+requires-python = ">=3.9"
+dependencies = [
+    "memvid-sdk>=2.0.0",
+]
+
+[project.optional-dependencies]
+pdf = ["pymupdf>=1.23.0"]
+all = ["pymupdf>=1.23.0"]
+
+[project.scripts]
+knowledge-engine = "bridge:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

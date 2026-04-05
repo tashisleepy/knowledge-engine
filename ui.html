@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Engine</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #0d1117;
+    --surface:    #161b22;
+    --border:     #21262d;
+    --border-hover: #30363d;
+    --text:       #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim:   #484f58;
+    --accent:     #58a6ff;
+    --accent-dim: #1f6feb33;
+    --green:      #3fb950;
+    --green-dim:  #238636;
+    --amber:      #d29922;
+    --amber-dim:  #9e6a0333;
+    --red:        #f85149;
+    --red-dim:    #da363333;
+    --purple:     #a371f7;
+    --code-bg:    #1c2128;
+    --radius:     6px;
+    --font:       -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono:       ui-monospace, "SFMono-Regular", "Cascadia Code", "Fira Code", monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- NAV ---- */
+  #nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 20px;
+    height: 48px;
+  }
+
+  #nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 28px;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  #nav-brand .logo-icon {
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  #nav-brand span {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    height: 100%;
+  }
+
+  .nav-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    height: 100%;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .nav-tab:hover { color: var(--text); }
+
+  .nav-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+
+  .nav-spacer { flex: 1; }
+
+  #nav-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s;
+  }
+
+  .status-dot.ok { background: var(--green); }
+  .status-dot.error { background: var(--red); }
+
+  /* ---- MAIN ---- */
+  #main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 20px;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---- SHARED COMPONENTS ---- */
+  .section-header {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .badge-wiki    { background: var(--accent-dim); color: var(--accent); }
+  .badge-memvid  { background: #3d2b5033; color: var(--purple); }
+  .badge-client  { background: #1f2937; color: #9ca3af; border: 1px solid var(--border); }
+  .badge-high    { background: #1a3a2a; color: var(--green); }
+  .badge-medium  { background: var(--amber-dim); color: var(--amber); }
+  .badge-low     { background: var(--red-dim); color: var(--red); }
+  .badge-type    { background: var(--code-bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .btn:hover { background: var(--border); border-color: var(--border-hover); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0d1117;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover { background: #79bcff; border-color: #79bcff; }
+
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---- DASHBOARD ---- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color 0.15s;
+  }
+
+  .stat-card:hover { border-color: var(--border-hover); }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .clients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: border-color 0.15s;
+  }
+
+  .client-card:hover { border-color: var(--border-hover); }
+
+  .client-card-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .client-card-name .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .client-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .client-card-meta span { font-family: var(--mono); color: var(--text-dim); }
+
+  .activity-log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .activity-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .activity-entry {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 140px 80px 1fr;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    transition: background 0.1s;
+  }
+
+  .activity-entry:last-child { border-bottom: none; }
+  .activity-entry:hover { background: rgba(255,255,255,0.02); }
+
+  .activity-date { color: var(--text-dim); font-family: var(--mono); }
+
+  .activity-op {
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .activity-op.ingest   { color: var(--green); }
+  .activity-op.query    { color: var(--accent); }
+  .activity-op.init     { color: var(--purple); }
+  .activity-op.lint     { color: var(--amber); }
+  .activity-op.update   { color: var(--text-muted); }
+
+  .activity-desc { color: var(--text-muted); line-height: 1.4; }
+
+  /* ---- SEARCH ---- */
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .search-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    min-height: 20px;
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.1s;
+  }
+
+  .result-card:hover { border-color: var(--border-hover); background: rgba(88,166,255,0.03); }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .result-score {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .result-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .result-snippet {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    font-family: var(--mono);
+    white-space: pre-wrap;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  .result-path {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    margin-top: 6px;
+  }
+
+  /* ---- WIKI ---- */
+  .wiki-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+    min-height: calc(100vh - 100px);
+  }
+
+  .wiki-sidebar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 0;
+    height: fit-content;
+    position: sticky;
+    top: 68px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+
+  .sidebar-title {
+    padding: 0 14px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .client-group { margin-bottom: 4px; }
+
+  .client-group-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.1s, background 0.1s;
+    border-radius: 3px;
+    margin: 0 4px;
+  }
+
+  .client-group-name:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+  .client-group-name .toggle { font-size: 10px; color: var(--text-dim); transition: transform 0.15s; }
+  .client-group-name.open .toggle { transform: rotate(90deg); }
+
+  .client-pages { display: none; }
+  .client-pages.open { display: block; }
+
+  .wiki-page-link {
+    display: block;
+    padding: 5px 14px 5px 30px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+    border-radius: 3px;
+    margin: 1px 4px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .wiki-page-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .wiki-page-link.active { color: var(--accent); background: var(--accent-dim); }
+
+  .wiki-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    min-height: 400px;
+  }
+
+  .page-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .wiki-placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+
+  .wiki-placeholder .icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+
+  /* Markdown rendered content */
+  #page-body h1 { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--text); line-height: 1.3; }
+  #page-body h2 { font-size: 17px; font-weight: 600; margin: 28px 0 12px; color: var(--text); padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  #page-body h3 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--text-muted); }
+  #page-body p  { margin-bottom: 14px; color: var(--text-muted); line-height: 1.7; }
+  #page-body ul, #page-body ol { margin: 0 0 14px 20px; color: var(--text-muted); }
+  #page-body li { margin-bottom: 4px; line-height: 1.6; }
+  #page-body strong { color: var(--text); font-weight: 600; }
+  #page-body em { color: var(--text-muted); font-style: italic; }
+  #page-body code { font-family: var(--mono); font-size: 12px; background: var(--code-bg); padding: 2px 5px; border-radius: 3px; color: #ff8c00; }
+  #page-body pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; overflow-x: auto; margin-bottom: 16px; }
+  #page-body pre code { background: none; padding: 0; color: var(--text-muted); font-size: 13px; }
+  #page-body table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  #page-body th { background: var(--code-bg); color: var(--text); font-weight: 600; padding: 8px 12px; text-align: left; border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  #page-body td { padding: 8px 12px; border: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
+  #page-body tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  #page-body a.wikilink { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent-dim); cursor: pointer; }
+  #page-body a.wikilink:hover { border-bottom-color: var(--accent); }
+  #page-body blockquote { border-left: 3px solid var(--border-hover); margin: 0 0 14px; padding: 8px 16px; color: var(--text-muted); background: rgba(255,255,255,0.02); }
+  #page-body hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ---- ENTITIES ---- */
+  .entities-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .entities-controls input,
+  .entities-controls select {
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .entities-controls input { flex: 1; }
+  .entities-controls input:focus,
+  .entities-controls select:focus { border-color: var(--accent); }
+
+  .entities-controls select option { background: var(--surface); }
+
+  .entities-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .entities-table th {
+    background: var(--surface);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid var(--border);
+    position: sticky;
+    top: 48px;
+  }
+
+  .entities-table td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: middle;
+  }
+
+  .entities-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .entities-table tbody tr:hover td:first-child { color: var(--accent); }
+
+  .entity-name { font-weight: 500; color: var(--text); cursor: pointer; }
+  .entity-name:hover { color: var(--accent); }
+
+  .entity-link {
+    color: var(--accent);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .entity-link:hover { text-decoration: underline; }
+
+  .entity-type {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* ---- HEALTH ---- */
+  .health-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+
+  .health-status-bar {
+    margin-bottom: 24px;
+  }
+
+  .health-score {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .health-score-value {
+    font-size: 48px;
+    font-weight: 700;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+
+  .health-score-label { font-size: 13px; color: var(--text-muted); }
+
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .progress-fill.green  { background: var(--green); }
+  .progress-fill.amber  { background: var(--amber); }
+  .progress-fill.red    { background: var(--red); }
+
+  .health-section {
+    margin-bottom: 20px;
+  }
+
+  .health-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .health-count {
+    background: var(--code-bg);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .health-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .health-list-item {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .health-list-item:last-child { border-bottom: none; }
+
+  .health-list-item .icon { font-size: 14px; flex-shrink: 0; }
+
+  .health-empty {
+    padding: 14px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  /* ---- LOADING / EMPTY STATES ---- */
+  .loading {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* ---- SCROLLBAR ---- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .wiki-layout { grid-template-columns: 1fr; }
+    .wiki-sidebar { position: static; max-height: 300px; }
+  }
+
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    #nav { padding: 0 12px; }
+    #main { padding: 16px 12px; }
+    .nav-tab { padding: 0 10px; font-size: 12px; }
+    .activity-entry { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <a id="nav-brand" href="#" onclick="return false;">
+    <div class="logo-icon">KE</div>
+    <span>Knowledge Engine</span>
+  </a>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
+    <div class="nav-tab" data-tab="search" onclick="switchTab('search')">Search</div>
+    <div class="nav-tab" data-tab="wiki" onclick="switchTab('wiki')">Wiki</div>
+    <div class="nav-tab" data-tab="entities" onclick="switchTab('entities')">Entities</div>
+    <div class="nav-tab" data-tab="health" onclick="switchTab('health')">Health</div>
+  </div>
+  <div class="nav-spacer"></div>
+  <div id="nav-status">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Connecting...</span>
+  </div>
+</nav>
+
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div class="tab-panel active" id="tab-dashboard">
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="s-wiki">-</div><div class="stat-label">Wiki Pages</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-frames">-</div><div class="stat-label">Memvid Frames</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-entities">-</div><div class="stat-label">Entities</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-tags">-</div><div class="stat-label">Tags</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-latency">-</div><div class="stat-label">Search Latency</div><div class="stat-sub" id="s-latency-sub"></div></div>
+      <div class="stat-card"><div class="stat-value" id="s-drift">-</div><div class="stat-label">Sync Status</div><div class="stat-sub" id="s-drift-sub"></div></div>
+    </div>
+
+    <p class="section-header" style="margin-bottom:12px">Clients</p>
+    <div class="clients-grid" id="clients-grid">
+      <div class="loading">Loading client data...</div>
+    </div>
+
+    <div class="activity-log">
+      <div class="activity-header">
+        <span>Recent Activity</span>
+        <span id="activity-count" style="color:var(--text-dim);font-weight:400;font-size:11px"></span>
+      </div>
+      <div id="activity-body"><div class="loading" style="padding:16px">Loading log...</div></div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="tab-panel" id="tab-search">
+    <div class="search-bar">
+      <input
+        type="text"
+        id="search-input"
+        class="search-input"
+        placeholder="Search across all knowledge..."
+        onkeydown="if(event.key==='Enter')doSearch()"
+      >
+      <button class="btn btn-primary" onclick="doSearch()">Search</button>
+    </div>
+    <div class="search-meta" id="search-meta"></div>
+    <div id="search-results"></div>
+  </div>
+
+  <!-- WIKI -->
+  <div class="tab-panel" id="tab-wiki">
+    <div class="wiki-layout">
+      <div class="wiki-sidebar">
+        <div class="sidebar-title">Pages</div>
+        <div id="wiki-tree"><div class="loading" style="padding:12px">Loading...</div></div>
+      </div>
+      <div class="wiki-content" id="wiki-content">
+        <div class="wiki-placeholder">
+          <div class="icon">&#128196;</div>
+          <div style="font-size:14px;color:var(--text-muted);margin-bottom:6px">Select a page from the sidebar</div>
+          <div style="font-size:12px">Browse by client or use Search to find specific pages</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTITIES -->
+  <div class="tab-panel" id="tab-entities">
+    <div class="entities-controls">
+      <input type="text" id="entity-filter" placeholder="Filter by name..." oninput="filterEntities()">
+      <select id="entity-client-filter" onchange="filterEntities()">
+        <option value="">All clients</option>
+      </select>
+    </div>
+    <div id="entities-count" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
+    <table class="entities-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Client</th>
+          <th>Type</th>
+          <th>Wiki Page</th>
+        </tr>
+      </thead>
+      <tbody id="entities-body">
+        <tr><td colspan="4" class="loading" style="text-align:center;padding:20px">Loading entities...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- HEALTH -->
+  <div class="tab-panel" id="tab-health">
+    <div class="health-actions">
+      <button class="btn btn-primary" onclick="runHealthCheck()" id="health-btn">Run Health Check</button>
+      <button class="btn" onclick="runSync()" id="sync-btn">Sync All Pages</button>
+      <span id="health-run-status" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+    <div id="health-results">
+      <div class="empty-state">Click "Run Health Check" to analyze sync status, orphan frames, and stale pages.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- STATE ----
+const API = '';  // same-origin
+let allEntities = [];
+let wikiTree = {};
+let currentPage = null;
+
+// ---- TAB SWITCHING ----
+function switchTab(name) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+
+  if (name === 'search') {
+    setTimeout(() => document.getElementById('search-input').focus(), 50);
+  }
+}
+
+// ---- API HELPERS ----
+async function apiFetch(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+async function apiPost(path) {
+  const res = await fetch(API + path, { method: 'POST' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+function setStatus(ok, text) {
+  document.getElementById('status-dot').className = 'status-dot ' + (ok ? 'ok' : 'error');
+  document.getElementById('status-text').textContent = text;
+}
+
+// ---- FORMAT HELPERS ----
+function fmtBytes(b) {
+  if (!b || b === 0) return '0 B';
+  const units = ['B','KB','MB','GB'];
+  let i = 0;
+  while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+  return b.toFixed(1) + ' ' + units[i];
+}
+
+function fmtNum(n) {
+  if (n === undefined || n === null || n === '-') return '-';
+  return Number(n).toLocaleString();
+}
+
+function slugToTitle(s) {
+  return s.replace(/-/g, ' ').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ---- DASHBOARD ----
+async function loadDashboard() {
+  try {
+    const data = await apiFetch('/api/stats');
+    setStatus(true, 'Connected');
+
+    // Wiki stats
+    document.getElementById('s-wiki').textContent = fmtNum(data.wiki?.total_pages ?? '-');
+
+    // Memvid frames
+    const frames = data.memvid?.frame_count ?? '-';
+    document.getElementById('s-frames').textContent = fmtNum(frames);
+
+    // Entities + tags
+    document.getElementById('s-entities').textContent = fmtNum(data.schema?.entity_count ?? '-');
+    document.getElementById('s-tags').textContent = fmtNum(data.schema?.tag_count ?? '-');
+
+    // Latency
+    const lat = data.memvid?.search_latency_ms;
+    document.getElementById('s-latency').textContent = lat != null ? lat + 'ms' : '-';
+    document.getElementById('s-latency-sub').textContent = lat != null ? 'memvid master' : 'memvid offline';
+
+    // Drift
+    const drift = data.drift?.sync_status ?? '-';
+    document.getElementById('s-drift').textContent = typeof drift === 'string' ? drift.split(' ')[0] : '-';
+    document.getElementById('s-drift-sub').textContent = typeof drift === 'string' ? drift : drift;
+
+    // Client cards
+    const byClient = data.wiki?.by_client ?? {};
+    const archiveSizes = data.memvid?.per_client_archive_sizes ?? {};
+    renderClientCards(byClient, archiveSizes);
+
+  } catch(e) {
+    setStatus(false, 'Error');
+    document.getElementById('s-wiki').textContent = 'Err';
+  }
+
+  // Load log separately
+  loadActivityLog();
+}
+
+function renderClientCards(byClient, archiveSizes) {
+  const grid = document.getElementById('clients-grid');
+  const clients = Object.keys(byClient).filter(c => c !== '_templates');
+  if (!clients.length) {
+    grid.innerHTML = '<div class="empty-state">No clients found</div>';
+    return;
+  }
+
+  const colors = ['#58a6ff','#3fb950','#a371f7','#d29922','#ff7b72','#39d353'];
+  grid.innerHTML = clients.map((c, i) => {
+    const pages = byClient[c];
+    const archSize = archiveSizes[c];
+    const color = colors[i % colors.length];
+    return `
+      <div class="client-card" onclick="goToWikiClient('${c}')">
+        <div class="client-card-name">
+          <div class="dot" style="background:${color}"></div>
+          ${slugToTitle(c)}
+        </div>
+        <div class="client-card-meta">
+          <div>${pages} wiki page${pages !== 1 ? 's' : ''}</div>
+          ${archSize ? '<div>Archive: <span>' + fmtBytes(archSize) + '</span></div>' : '<div>No archive yet</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function goToWikiClient(client) {
+  switchTab('wiki');
+  setTimeout(() => {
+    const el = document.getElementById('pages-' + client);
+    if (el) {
+      el.classList.add('open');
+      el.previousElementSibling.classList.add('open');
+    }
+  }, 100);
+}
+
+async function loadActivityLog() {
+  const body = document.getElementById('activity-body');
+  try {
+    const data = await apiFetch('/api/log');
+    const lines = (data.content || '').split('\n');
+    const entries = [];
+
+    let current = null;
+    for (const line of lines) {
+      const m = line.match(/^## \[(\d{4}-\d{2}-\d{2}[^\]]*)\]\s+(\w+)\s*\|\s*(.*)/);
+      if (m) {
+        if (current) entries.push(current);
+        current = { date: m[1].trim(), op: m[2].trim(), desc: m[3].trim(), details: [] };
+      } else if (current && line.startsWith('- ')) {
+        current.details.push(line.slice(2).trim());
+      }
+    }
+    if (current) entries.push(current);
+
+    document.getElementById('activity-count').textContent = entries.length + ' entries';
+
+    if (!entries.length) {
+      body.innerHTML = '<div class="empty-state">No activity logged yet</div>';
+      return;
+    }
+
+    const shown = entries.slice(0, 20);
+    body.innerHTML = shown.map(e => `
+      <div class="activity-entry">
+        <div class="activity-date">${e.date}</div>
+        <div class="activity-op ${e.op.toLowerCase()}">${e.op}</div>
+        <div class="activity-desc">${escHtml(e.desc)}${e.details.length ? '<br><span style="font-size:11px;color:var(--text-dim)">' + escHtml(e.details[0]) + '</span>' : ''}</div>
+      </div>`).join('');
+  } catch(e) {
+    body.innerHTML = '<div class="empty-state">Could not load log: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+// ---- SEARCH ----
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+
+  const resultsEl = document.getElementById('search-results');
+  const metaEl = document.getElementById('search-meta');
+  resultsEl.innerHTML = '<div class="loading">Searching...</div>';
+  metaEl.textContent = '';
+
+  try {
+    const data = await apiFetch('/api/search?q=' + encodeURIComponent(q));
+    const { results, count, elapsed_ms } = data;
+
+    metaEl.textContent = count + ' result' + (count !== 1 ? 's' : '') + ' in ' + elapsed_ms + 'ms';
+
+    if (!results || !results.length) {
+      resultsEl.innerHTML = '<div class="empty-state">No results for "' + escHtml(q) + '"</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = results.map(r => {
+      const layer = r.layer || (r.source?.startsWith('wiki') ? 'wiki' : 'memvid');
+      const client = extractClient(r);
+      const score = typeof r.score === 'number' ? r.score.toFixed(1) : r.score;
+      const clientStr = client ? `<span class="badge badge-client">${escHtml(client)}</span>` : '';
+      const tags = (r.tags || []).slice(0, 3).map(t => `<span class="badge badge-type">${escHtml(t)}</span>`).join('');
+
+      return `<div class="result-card" onclick="openSearchResult('${escAttr(r.wiki_path || '')}', '${escAttr(r.title || '')}')">
+        <div class="result-header">
+          <span class="badge badge-${layer}">${layer}</span>
+          ${clientStr}
+          ${tags}
+          <span class="result-score">score: ${score}</span>
+        </div>
+        <div class="result-title">${escHtml(r.title || r.wiki_path || 'Untitled')}</div>
+        <div class="result-snippet">${escHtml((r.text || '').slice(0, 300))}</div>
+        ${r.wiki_path ? '<div class="result-path">' + escHtml(r.wiki_path) + '</div>' : ''}
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    resultsEl.innerHTML = '<div class="empty-state">Search error: ' + escHtml(e.message) + '</div>';
+    metaEl.textContent = '';
+  }
+}
+
+function extractClient(r) {
+  if (r.wiki_path) {
+    const parts = r.wiki_path.split('/');
+    if (parts.length >= 2) return parts[parts.length - 2];
+  }
+  if (r.tags && r.tags.length) return r.tags[0];
+  return '';
+}
+
+function openSearchResult(wikiPath, title) {
+  if (!wikiPath) return;
+  // Strip 'wiki/' prefix if present, also handle 'wiki/client/page' format
+  let clean = wikiPath.replace(/^wiki\//, '').replace(/\.md$/, '');
+  switchTab('wiki');
+  setTimeout(() => loadWikiPage(clean), 100);
+}
+
+// ---- WIKI ----
+async function loadWikiTree() {
+  const treeEl = document.getElementById('wiki-tree');
+  try {
+    const data = await apiFetch('/api/wiki');
+    wikiTree = data.tree || {};
+    renderWikiTree();
+  } catch(e) {
+    treeEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--red)">Error: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function renderWikiTree() {
+  const treeEl = document.getElementById('wiki-tree');
+  const clients = Object.keys(wikiTree).filter(c => !c.startsWith('_') || c === '_shared');
+  const special = Object.keys(wikiTree).filter(c => c.startsWith('_') && c !== '_shared');
+  const allGroups = [...clients.sort(), ...special.sort()];
+
+  if (!allGroups.length) {
+    treeEl.innerHTML = '<div class="empty-state" style="padding:12px">No wiki pages found</div>';
+    return;
+  }
+
+  treeEl.innerHTML = allGroups.map(client => {
+    const pages = wikiTree[client] || [];
+    return `
+      <div class="client-group">
+        <div class="client-group-name" id="group-${client}" onclick="toggleWikiGroup('${client}')">
+          <span class="toggle">&#9656;</span>
+          ${slugToTitle(client)}
+          <span style="margin-left:auto;font-size:10px;color:var(--text-dim);font-weight:400">${pages.length}</span>
+        </div>
+        <div class="client-pages" id="pages-${client}">
+          ${pages.map(p => `<div class="wiki-page-link" id="link-${escAttr(p.slug)}" onclick="loadWikiPage('${escAttr(p.slug)}')">${escHtml(p.title)}</div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleWikiGroup(client) {
+  const pages = document.getElementById('pages-' + client);
+  const group = document.getElementById('group-' + client);
+  if (pages) {
+    const isOpen = pages.classList.toggle('open');
+    group.classList.toggle('open', isOpen);
+  }
+}
+
+async function loadWikiPage(slug) {
+  // Update active link
+  document.querySelectorAll('.wiki-page-link').forEach(l => l.classList.remove('active'));
+  const linkEl = document.getElementById('link-' + slug);
+  if (linkEl) {
+    linkEl.classList.add('active');
+    // Expand parent group
+    const group = linkEl.closest('.client-pages');
+    if (group) {
+      group.classList.add('open');
+      const header = group.previousElementSibling;
+      if (header) header.classList.add('open');
+    }
+  }
+
+  const content = document.getElementById('wiki-content');
+  content.innerHTML = '<div class="loading" style="padding:28px">Loading...</div>';
+  currentPage = slug;
+
+  try {
+    const data = await apiFetch('/api/wiki/' + encodeURIComponent(slug));
+    renderWikiPage(data);
+  } catch(e) {
+    content.innerHTML = `<div style="padding:28px;color:var(--red)">Error loading page: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderWikiPage(data) {
+  const { frontmatter: fm, body } = data;
+  const content = document.getElementById('wiki-content');
+
+  // Metadata badges
+  const badges = [];
+  if (fm.type)       badges.push(`<span class="badge badge-type">${escHtml(fm.type)}</span>`);
+  if (fm.confidence) badges.push(`<span class="badge badge-${fm.confidence}">${escHtml(fm.confidence)}</span>`);
+  if (fm.client)     badges.push(`<span class="badge badge-client">${escHtml(fm.client)}</span>`);
+  if (fm.updated)    badges.push(`<span style="font-size:11px;color:var(--text-dim)">Updated: ${escHtml(fm.updated)}</span>`);
+  const tags = fm.tags || [];
+  const tagList = Array.isArray(tags) ? tags : [tags];
+  tagList.forEach(t => badges.push(`<span class="badge badge-type">${escHtml(t)}</span>`));
+
+  const metaHtml = badges.length ? `<div class="page-meta">${badges.join('')}</div>` : '';
+  const bodyHtml = renderMarkdown(body || '');
+
+  content.innerHTML = metaHtml + '<div id="page-body">' + bodyHtml + '</div>';
+
+  // Wire up wikilinks
+  document.querySelectorAll('#page-body a.wikilink').forEach(a => {
+    const target = a.dataset.target;
+    if (target) {
+      a.onclick = (e) => { e.preventDefault(); loadWikiPage(target); };
+    }
+  });
+}
+
+// ---- SIMPLE MARKDOWN RENDERER ----
+function renderMarkdown(md) {
+  if (!md) return '';
+  let html = md;
+
+  // Code blocks (fenced) - process FIRST before anything else munges them
+  const codeBlocks = [];
+  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre><code class="lang-${escHtml(lang)}">${escHtml(code.trim())}</code></pre>`);
+    return `\x00CODE${idx}\x00`;
+  });
+
+  // Inline code
+  html = html.replace(/`([^`\n]+)`/g, (_, c) => `<code>${escHtml(c)}</code>`);
+
+  // Wikilinks [[path]] - before regular links
+  html = html.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
+    const parts = target.split('|');
+    const path = parts[0].trim();
+    const label = parts[1] ? parts[1].trim() : path.split('/').pop();
+    return `<a class="wikilink" data-target="${escAttr(path)}" href="#">${escHtml(label)}</a>`;
+  });
+
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  // Strikethrough
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
+  // Tables
+  html = html.replace(/((?:\|[^\n]+\|\n)+)/g, (tableBlock) => {
+    const rows = tableBlock.trim().split('\n');
+    if (rows.length < 2) return tableBlock;
+    const headerCells = rows[0].split('|').filter((_, i, a) => i > 0 && i < a.length - 1);
+    const isSeparator = (r) => /^\s*[\|\-\s:]+\s*$/.test(r);
+    let dataRows = rows.slice(1).filter(r => !isSeparator(r));
+    const thead = '<thead><tr>' + headerCells.map(c => `<th>${c.trim()}</th>`).join('') + '</tr></thead>';
+    const tbody = '<tbody>' + dataRows.map(r => {
+      const cells = r.split('|').filter((_, i, a) => i > 0 && i < a.length - 1);
+      return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    return '<table>' + thead + tbody + '</table>';
+  });
+
+  // Headings
+  html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+  html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+  html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+  // Blockquotes
+  html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // HR
+  html = html.replace(/^---+$/gm, '<hr>');
+
+  // Unordered lists (group consecutive items)
+  html = html.replace(/((?:^[ \t]*[-*+]\s+.+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*[-*+]\s+/, '').trim());
+    return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>\n';
+  });
+
+  // Ordered lists
+  html = html.replace(/((?:^\d+\.\s+.+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim());
+    return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>\n';
+  });
+
+  // Paragraphs - wrap lines separated by blank lines
+  html = html.replace(/\n\n+/g, '\n\n');
+  const paragraphs = html.split('\n\n');
+  html = paragraphs.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+    if (/^<(h[1-6]|ul|ol|pre|table|blockquote|hr|div)/.test(trimmed)) return trimmed;
+    if (/\x00CODE\d+\x00/.test(trimmed)) return trimmed;
+    return '<p>' + trimmed.replace(/\n/g, ' ') + '</p>';
+  }).join('\n');
+
+  // Restore code blocks
+  codeBlocks.forEach((block, idx) => {
+    html = html.replace(`\x00CODE${idx}\x00`, block);
+  });
+
+  return html;
+}
+
+// ---- ENTITIES ----
+async function loadEntities() {
+  try {
+    const data = await apiFetch('/api/entities');
+    allEntities = (data.entities || []).filter(e => e && e.name);
+
+    // Populate client filter
+    const clients = [...new Set(allEntities.map(e => e.client).filter(Boolean))].sort();
+    const sel = document.getElementById('entity-client-filter');
+    clients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = slugToTitle(c);
+      sel.appendChild(opt);
+    });
+
+    renderEntitiesTable(allEntities);
+  } catch(e) {
+    document.getElementById('entities-body').innerHTML =
+      `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--red)">Error: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function filterEntities() {
+  const q = document.getElementById('entity-filter').value.toLowerCase();
+  const client = document.getElementById('entity-client-filter').value;
+
+  const filtered = allEntities.filter(e => {
+    const matchName = !q || (e.name || '').toLowerCase().includes(q) || (e.id || '').toLowerCase().includes(q);
+    const matchClient = !client || e.client === client;
+    return matchName && matchClient;
+  });
+
+  renderEntitiesTable(filtered);
+}
+
+function renderEntitiesTable(entities) {
+  const tbody = document.getElementById('entities-body');
+  document.getElementById('entities-count').textContent =
+    `Showing ${entities.length} of ${allEntities.length} entities`;
+
+  if (!entities.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state" style="text-align:center;padding:20px">No entities match your filter</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = entities.map(e => {
+    const wikiLink = e.wiki_page
+      ? `<span class="entity-link" onclick="openEntityPage('${escAttr(e.wiki_page)}')">${escHtml(e.wiki_page)}</span>`
+      : '<span style="color:var(--text-dim)">-</span>';
+    return `<tr>
+      <td><span class="entity-name">${escHtml(e.name || e.id)}</span></td>
+      <td><span class="badge badge-client">${escHtml(e.client || '-')}</span></td>
+      <td><span class="entity-type">${escHtml(e.type || 'unknown')}</span></td>
+      <td>${wikiLink}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openEntityPage(wikiPage) {
+  const slug = wikiPage.replace(/\.md$/, '');
+  switchTab('wiki');
+  setTimeout(() => loadWikiPage(slug), 100);
+}
+
+// ---- HEALTH ----
+async function runHealthCheck() {
+  const btn = document.getElementById('health-btn');
+  const status = document.getElementById('health-run-status');
+  const results = document.getElementById('health-results');
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  status.textContent = '';
+  results.innerHTML = '<div class="loading">Running drift check...</div>';
+
+  try {
+    const data = await apiFetch('/api/drift');
+    renderHealthResults(data);
+    status.textContent = 'Completed at ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    results.innerHTML = `<div class="empty-state" style="color:var(--red)">Health check failed: ${escHtml(e.message)}</div>`;
+    status.textContent = 'Failed';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Health Check';
+  }
+}
+
+function renderHealthResults(data) {
+  const results = document.getElementById('health-results');
+  const summary = data.summary || {};
+  const syncPct = typeof summary.sync_pct === 'number' ? summary.sync_pct : null;
+  const missing = data.missing_from_memvid || [];
+  const orphans = data.orphan_frames || [];
+  const stale = data.stale || [];
+  const error = data.error;
+
+  if (error && !summary.sync_pct) {
+    results.innerHTML = `<div class="card" style="color:var(--amber);font-size:13px"><strong>Note:</strong> ${escHtml(error)}</div>`;
+    return;
+  }
+
+  const pctColor = syncPct === null ? 'var(--text-dim)' : syncPct >= 90 ? 'var(--green)' : syncPct >= 70 ? 'var(--amber)' : 'var(--red)';
+  const barClass = syncPct === null ? '' : syncPct >= 90 ? 'green' : syncPct >= 70 ? 'amber' : 'red';
+  const barWidth = syncPct !== null ? syncPct : 0;
+
+  const scoreHtml = syncPct !== null ? `
+    <div class="health-status-bar">
+      <div class="health-score">
+        <div class="health-score-value" style="color:${pctColor}">${syncPct}%</div>
+        <div>
+          <div class="health-score-label">Sync coverage</div>
+          <div style="font-size:12px;color:var(--text-dim)">${summary.synced ?? '-'} of ${summary.total_wiki_pages ?? '-'} pages in memvid</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill ${barClass}" style="width:${barWidth}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${summary.memvid_frame_count ?? '-'} total frames in master archive</div>
+    </div>` : '';
+
+  const makeSectionHtml = (title, items, emptyMsg, icon, iconColor) => `
+    <div class="health-section">
+      <div class="health-section-title">
+        <span style="color:${iconColor}">${icon}</span>
+        ${title}
+        <span class="health-count">${items.length}</span>
+      </div>
+      <div class="health-list">
+        ${items.length === 0
+          ? `<div class="health-empty">${emptyMsg}</div>`
+          : items.slice(0, 20).map(item => {
+              const text = typeof item === 'string' ? item : (item.wiki_path || JSON.stringify(item));
+              const detail = typeof item === 'object' && item.issue ? ` - ${item.issue}` : '';
+              return `<div class="health-list-item"><span class="icon">${icon}</span>${escHtml(text)}${detail ? `<span style="color:var(--text-dim)">${escHtml(detail)}</span>` : ''}</div>`;
+            }).join('') + (items.length > 20 ? `<div class="health-empty">+${items.length - 20} more</div>` : '')
+        }
+      </div>
+    </div>`;
+
+  results.innerHTML = scoreHtml +
+    makeSectionHtml('Missing from Memvid', missing, 'All pages are synced to memvid', '&#9651;', 'var(--red)') +
+    makeSectionHtml('Orphan Frames', orphans, 'No orphan frames found', '&#9632;', 'var(--amber)') +
+    makeSectionHtml('Recently Modified (may be stale)', stale, 'No recently modified pages detected', '&#9651;', 'var(--amber)');
+}
+
+async function runSync() {
+  const btn = document.getElementById('sync-btn');
+  const status = document.getElementById('health-run-status');
+
+  btn.disabled = true;
+  btn.textContent = 'Syncing...';
+  status.textContent = '';
+
+  try {
+    const data = await apiPost('/api/sync');
+    const msg = `Sync complete: ${data.total_pages} pages, ${data.total_frames} frames`;
+    status.textContent = msg;
+    if (data.errors && data.errors.length) {
+      status.textContent += ` (${data.errors.length} errors)`;
+    }
+    // Refresh stats
+    loadDashboard();
+  } catch(e) {
+    status.textContent = 'Sync failed: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sync All Pages';
+  }
+}
+
+// ---- ESCAPE HELPERS ----
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escAttr(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+// ---- INIT ----
+(async function init() {
+  // Load all data
+  loadDashboard();
+  loadWikiTree();
+  loadEntities();
+
+  // Keyboard shortcut: / focuses search
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      switchTab('search');
+      document.getElementById('search-input').focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>
