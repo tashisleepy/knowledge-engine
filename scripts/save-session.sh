@@ -210,8 +210,12 @@ INDEX_PATTERN="\[\[${CLIENT}/session-${DATE}-${SLUG}\]\]"
 INDEX_ROW="| [[${CLIENT}/session-${DATE}-${SLUG}]] | deliverable | ${TITLE} | ${DATE} | high |"
 
 if grep -qF "[[${CLIENT}/session-${DATE}-${SLUG}]]" "$INDEX_FILE" 2>/dev/null; then
-  # Update existing row in place
-  sed -i.bak "s|^.*\[\[${CLIENT}/session-${DATE}-${SLUG}\]\].*$|${INDEX_ROW}|" "$INDEX_FILE" && rm -f "${INDEX_FILE}.bak"
+  # Update existing row in place - use awk for safety with square brackets
+  TMP_IDX="$(mktemp)"
+  awk -v search="[[${CLIENT}/session-${DATE}-${SLUG}]]" -v newrow="$INDEX_ROW" '
+    index($0, search) > 0 { print newrow; next }
+    { print }
+  ' "$INDEX_FILE" > "$TMP_IDX" && mv "$TMP_IDX" "$INDEX_FILE"
   echo "Index: updated existing row"
 else
   # Add new row under Recent Sessions section, or create section
