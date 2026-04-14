@@ -778,6 +778,8 @@
     <div class="nav-tab" data-tab="wiki" onclick="switchTab('wiki')">Wiki</div>
     <div class="nav-tab" data-tab="entities" onclick="switchTab('entities')">Entities</div>
     <div class="nav-tab" data-tab="health" onclick="switchTab('health')">Health</div>
+    <div class="nav-tab" data-tab="tools" onclick="switchTab('tools')">Tool Caller</div>
+    <div class="nav-tab" data-tab="month" onclick="switchTab('month'); loadMonthInNutshell()">Month in Nutshell</div>
   </div>
   <div class="nav-spacer"></div>
   <div id="nav-status">
@@ -870,6 +872,40 @@
     </table>
   </div>
 
+  <!-- TOOL CALLER -->
+  <div class="tab-panel" id="tab-tools">
+    <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center">
+      <input type="text" id="tool-filter" placeholder="Filter agents, skills, projects..." oninput="filterTools()" style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+      <select id="tool-type-filter" onchange="filterTools()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+        <option value="">All Types</option>
+        <option value="agent-global">Global Agents (33)</option>
+        <option value="agent-project">Project Agents (29)</option>
+        <option value="agent-stack">Stack Agents (5)</option>
+        <option value="skill-global">Global Skills (57)</option>
+        <option value="skill-workspace">Workspace Skills (4)</option>
+        <option value="skill-builtin">Built-in Skills (6)</option>
+        <option value="skill-native">Native Skills (5)</option>
+        <option value="skill-plugin">Plugin Skills (22)</option>
+        <option value="project">Claude Projects (26)</option>
+        <option value="mcp">MCP/Connectors (15)</option>
+        <option value="system">System Tools (7)</option>
+      </select>
+    </div>
+    <div id="tools-count" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
+    <table class="entities-table">
+      <thead>
+        <tr>
+          <th style="width:5%">#</th>
+          <th style="width:18%">Name</th>
+          <th style="width:10%">Type</th>
+          <th style="width:22%">How to Call</th>
+          <th style="width:45%">What It Does</th>
+        </tr>
+      </thead>
+      <tbody id="tools-body"></tbody>
+    </table>
+  </div>
+
   <!-- HEALTH -->
   <div class="tab-panel" id="tab-health">
     <div class="health-actions">
@@ -879,6 +915,15 @@
     </div>
     <div id="health-results">
       <div class="empty-state">Click "Run Health Check" to analyze sync status, orphan frames, and stale pages.</div>
+    </div>
+  </div>
+
+  <!-- MONTH IN NUTSHELL -->
+  <div class="tab-panel" id="tab-month">
+    <div id="month-content" style="padding:20px 0">
+      <div style="padding:40px;text-align:center;color:var(--text-dim)">
+        Click the "Month in Nutshell" tab to load the monthly summary.
+      </div>
     </div>
   </div>
 
@@ -1515,6 +1560,439 @@ function escAttr(s) {
     }
   });
 })();
+
+// ---- TOOL CALLER DATA ----
+const TOOLS_DATA = [
+  // GLOBAL AGENTS (33)
+  {n:"analyst",t:"agent-global",c:"Use analyst agent - [task]",d:"Pre-planning consultant. Finds holes in your plan before building"},
+  {n:"architect",t:"agent-global",c:"Use architect agent - [task]",d:"Designs how all parts of your system connect. Strategic, read-only"},
+  {n:"code-reviewer",t:"agent-global",c:"Use code-reviewer - [file]",d:"Reviews code like a senior engineer. Severity-rated, SOLID checks"},
+  {n:"code-simplifier",t:"agent-global",c:"Use code-simplifier - [code]",d:"Makes messy code shorter and cleaner without breaking anything"},
+  {n:"critic",t:"agent-global",c:"Use critic agent - [plan]",d:"Argues against your plan. Finds weaknesses. Multi-perspective"},
+  {n:"debugger",t:"agent-global",c:"Use debugger - [error]",d:"Root-cause analysis, stack trace analysis, regression isolation"},
+  {n:"designer",t:"agent-global",c:"Use designer - [app]",d:"UI/UX design. Plans how users experience your app"},
+  {n:"document-specialist",t:"agent-global",c:"Use document-specialist - [API]",d:"Searches official docs across the internet for technical answers"},
+  {n:"executor",t:"agent-global",c:"Use executor - [task]",d:"Writes actual code across multiple files. The builder"},
+  {n:"explore",t:"agent-global",c:"Use explore - [codebase]",d:"Maps a codebase in seconds. Finds files and code patterns"},
+  {n:"git-master",t:"agent-global",c:"Use git-master - [problem]",d:"Handles branches, merges, reverts, fixes git disasters"},
+  {n:"planner",t:"agent-global",c:"Use planner - [project]",d:"Breaks ideas into ordered tasks with risks flagged"},
+  {n:"qa-tester",t:"agent-global",c:"Use qa-tester - [app]",d:"Tests apps the way a real user would. CLI testing via tmux"},
+  {n:"scientist",t:"agent-global",c:"Use scientist - [data]",d:"Data analysis, research, pattern detection, evidence-backed conclusions"},
+  {n:"security-reviewer",t:"agent-global",c:"Use security-reviewer - [code]",d:"Scans for OWASP Top 10, secrets, unsafe patterns"},
+  {n:"test-engineer",t:"agent-global",c:"Use test-engineer - [module]",d:"Writes automated tests. TDD workflows, flaky test hardening"},
+  {n:"tracer",t:"agent-global",c:"Use tracer - [problem]",d:"Evidence-driven causal tracing with competing hypotheses"},
+  {n:"verifier",t:"agent-global",c:"Use verifier - [task]",d:"Confirms everything works. Evidence-based sign-off"},
+  {n:"writer",t:"agent-global",c:"Use writer - [project]",d:"Technical documentation, READMEs, API docs (Haiku)"},
+  {n:"marketing-content-creator",t:"agent-global",c:"Use marketing-content-creator - [type] for [platform]",d:"Multi-platform content. Editorial calendars, copy, brand storytelling"},
+  {n:"marketing-linkedin-content-creator",t:"agent-global",c:"Use marketing-linkedin-content-creator - [topic]",d:"LinkedIn posts and articles. Thought leadership"},
+  {n:"marketing-seo-specialist",t:"agent-global",c:"Use marketing-seo-specialist - [URL]",d:"SEO audits, content optimization, organic search growth"},
+  {n:"marketing-twitter-engager",t:"agent-global",c:"Use marketing-twitter-engager - [topic]",d:"X/Twitter threads, engagement, thought leadership"},
+  {n:"sales-discovery-coach",t:"agent-global",c:"Use sales-discovery-coach - [client]",d:"Coaches discovery methodology. Question design, gap quantification"},
+  {n:"sales-proposal-strategist",t:"agent-global",c:"Use sales-proposal-strategist - [client]",d:"Transforms RFPs into compelling win narratives"},
+  {n:"design-brand-guardian",t:"agent-global",c:"Use design-brand-guardian - [assets]",d:"Checks brand identity consistency across all assets"},
+  {n:"design-image-prompt-engineer",t:"agent-global",c:"Use design-image-prompt-engineer - [image desc]",d:"Writes detailed prompts for AI image generators"},
+  {n:"product-manager",t:"agent-global",c:"Use product-manager - [product]",d:"Scopes products, writes user stories, creates roadmaps"},
+  {n:"product-trend-researcher",t:"agent-global",c:"Use product-trend-researcher - [market]",d:"Market research, competitive analysis, opportunity assessment"},
+  {n:"engineering-ai-engineer",t:"agent-global",c:"Use engineering-ai-engineer - [system]",d:"Builds AI/ML systems. Model selection, training, deployment"},
+  {n:"engineering-software-architect",t:"agent-global",c:"Use engineering-software-architect - [system]",d:"Full technical blueprints. Databases, APIs, infrastructure"},
+  {n:"kling",t:"agent-global",c:"Use kling agent - [scene]",d:"Personal AI video director. 72 cinematic situations. Image to video"},
+  {n:"capcut-director",t:"agent-global",c:"Use capcut-director - [edit]",d:"CapCut AI editing director. Project analysis + cinematic editing"},
+  // PROJECT AGENTS (29)
+  {n:"p1-creative-director-v3",t:"agent-project",c:"Use p1-creative-director - [brief]",d:"Creative Director for Luxury Brands. Bollywood-specific viral content"},
+  {n:"p2-viddirector-pro-v40",t:"agent-project",c:"Use p2-viddirector - [brief]",d:"Technical Director + Emotional Strategist for commercials"},
+  {n:"p3-viddirector-pro-35",t:"agent-project",c:"Use p3-viddirector - [brief]",d:"Video Architect for short-form content. EDLs and AI prompts"},
+  {n:"director-ai-studio",t:"agent-project",c:"Use director-ai-studio - [brief]",d:"Full creative director, song selector, storyboard artist, viral strategist"},
+  {n:"visual-prompt-engine",t:"agent-project",c:"Use visual-prompt-engine - [desc]",d:"Multi-platform AI prompt generation. 25+ models"},
+  {n:"image-replicator",t:"agent-project",c:"Use image-replicator - [image]",d:"Analyzes and replicates visual style, composition, lighting"},
+  {n:"tashi-claude-architect-v3",t:"agent-project",c:"Use tashi-claude-architect - [desc]",d:"Generates images for Tashi. Custom prompt engineering"},
+  {n:"tashi-kling-prompt",t:"agent-project",c:"Use tashi-kling-prompt - [video]",d:"Kling 3.0 image-to-video prompts for Tashi content"},
+  {n:"tashi-10-creators-dream",t:"agent-project",c:"Use tashi-10 - [content type]",d:"World's highest-performing AI copywriter. 14 content modes"},
+  {n:"the-slop-incinerator-x",t:"agent-project",c:"Use slop-incinerator - [text]",d:"Removes AI slop. No Stakes, No Specifics, No Friction"},
+  {n:"hum-2",t:"agent-project",c:"Use hum-2 - [topic]",d:"Human-quality writing from scratch"},
+  {n:"human",t:"agent-project",c:"Use human - [topic]",d:"Humanizer writing. Authentic human-written feel"},
+  {n:"viral",t:"agent-project",c:"Use viral - [topic]",d:"Viral content creation. Maximum engagement"},
+  {n:"maya-creator",t:"agent-project",c:"Use maya-creator - [desc]",d:"Creates images for Maya character"},
+  {n:"hazel-creator",t:"agent-project",c:"Use hazel-creator - [desc]",d:"Creates images for Hazel character"},
+  {n:"tashi-style",t:"agent-project",c:"Use tashi-style - [look]",d:"Wardrobe and styling for Tashi"},
+  {n:"tashi-rashi-socials",t:"agent-project",c:"Use tashi-rashi-socials - [brief]",d:"Creates social media posts for Tashi and Rashi"},
+  {n:"rashi-style",t:"agent-project",c:"Use rashi-style - [look]",d:"Styles for Rashi"},
+  {n:"ifvg-crt-trading-analyzer",t:"agent-project",c:"Use ifvg-crt - [chart]",d:"Chart analysis. Dodgy's IFVG + Romeo's CRT models"},
+  {n:"tashi-numerology-queen",t:"agent-project",c:"Use tashi-numerology - [name/date]",d:"Chaldean numerology. Predictions, timing, name analysis"},
+  {n:"prime-frame-research",t:"agent-project",c:"Use prime-frame-research - [topic]",d:"Research for PrimeFrame AI"},
+  {n:"archived-research-buddy",t:"agent-project",c:"Use archived-research - [topic]",d:"Research for PFAi historical projects"},
+  {n:"kf-generator",t:"agent-project",c:"Use kf-generator - [topic]",d:"Generates Knowledge Files for Claude Projects"},
+  {n:"wiki-agent",t:"agent-project",c:"Use wiki-agent - INGEST/QUERY/LINT",d:"Knowledge engine operator. Ingests sources, maintains wiki"},
+  {n:"knowledge-query",t:"agent-project",c:"Use knowledge-query - [search]",d:"Fast read-only search across the knowledge wiki"},
+  {n:"amazon-a-luxe",t:"agent-project",c:"Use amazon-a-luxe - [product]",d:"Amazon A+ Enhanced Brand Content for luxury products"},
+  {n:"blood-decode",t:"agent-project",c:"Use blood-decode - [report]",d:"Blood/urine report analysis. Brutally honest health diagnosis"},
+  {n:"clean",t:"agent-project",c:"Use clean - [text]",d:"Text cleaning utility. Strips artifacts, normalizes formatting"},
+  {n:"roulette",t:"agent-project",c:"Use roulette - play",d:"Plays roulette (fun)"},
+  // STACK AGENTS (5)
+  {n:"content-strategist",t:"agent-stack",c:"(ai-engineering-stack)",d:"High-stakes content for X/Twitter, LinkedIn. Slop Incinerator philosophy"},
+  {n:"image-architect",t:"agent-stack",c:"(ai-engineering-stack)",d:"AI image prompt engineer. Commercial photography, luxury brands"},
+  {n:"music-producer",t:"agent-stack",c:"(ai-engineering-stack)",d:"AI music director for Suno. 40+ global genres"},
+  {n:"video-director",t:"agent-stack",c:"(ai-engineering-stack)",d:"AI video director for Kling O1 Edit. Cinematographer with iPhone"},
+  {n:"capcut-director (stack)",t:"agent-stack",c:"(capcut-ai-director)",d:"CapCut AI editing director (stack copy)"},
+  // GLOBAL SKILLS (57)
+  {n:"autopilot",t:"skill-global",c:"/autopilot [goal]",d:"Full autonomous execution. Plans, builds, tests, validates"},
+  {n:"ralph",t:"skill-global",c:"/ralph [task]",d:"Loops until task is done and verified. Never quits early"},
+  {n:"team",t:"skill-global",c:"/team [task]",d:"Multiple AI agents working together on same task"},
+  {n:"ultrawork",t:"skill-global",c:"/ultrawork [tasks]",d:"Maximum parallelism. Runs as many tasks at once as possible"},
+  {n:"ralplan",t:"skill-global",c:"/ralplan [goal]",d:"Plans with agent council, gets consensus, then executes"},
+  {n:"plan",t:"skill-global",c:"/plan [project]",d:"Strategic planning with optional interview workflow"},
+  {n:"deep-interview",t:"skill-global",c:"/deep-interview [idea]",d:"Socratic interview to fully understand what you need"},
+  {n:"deep-dive",t:"skill-global",c:"/deep-dive [problem]",d:"2-stage: trace root cause then interview for requirements"},
+  {n:"trace",t:"skill-global",c:"/trace [problem]",d:"Evidence-driven investigation. Follows bug step by step"},
+  {n:"ultraqa",t:"skill-global",c:"/ultraqa [test target]",d:"QA loop: test, find, fix, repeat until passes"},
+  {n:"sciomc",t:"skill-global",c:"/sciomc [topic]",d:"Parallel scientist agents for comprehensive analysis"},
+  {n:"ccg",t:"skill-global",c:"/ccg [question]",d:"Claude + Codex + Gemini, combine best answers"},
+  {n:"ask",t:"skill-global",c:"/ask codex [q] or /ask gemini [q]",d:"Routes question to best AI model"},
+  {n:"cancel",t:"skill-global",c:"/cancel",d:"Stops whatever is running immediately"},
+  {n:"setup",t:"skill-global",c:"/setup",d:"First-run routing for install, update, or MCP config"},
+  {n:"omc-setup",t:"skill-global",c:"/omc-setup",d:"Install or refresh oh-my-claudecode"},
+  {n:"omc-doctor",t:"skill-global",c:"/omc-doctor",d:"Diagnose and fix installation issues"},
+  {n:"omc-reference",t:"skill-global",c:"/omc-reference",d:"Full catalog of all agents, skills, and tools"},
+  {n:"mcp-setup",t:"skill-global",c:"/mcp-setup [tool]",d:"Configure MCP servers for Claude"},
+  {n:"configure-notifications",t:"skill-global",c:"/configure-notifications [platform]",d:"Set up Telegram, Discord, or Slack alerts"},
+  {n:"hud",t:"skill-global",c:"/hud [options]",d:"Configure heads-up display during tasks"},
+  {n:"deepinit",t:"skill-global",c:"/deepinit [folder]",d:"Deep codebase scan and documentation generation"},
+  {n:"ai-slop-cleaner",t:"skill-global",c:"/ai-slop-cleaner [code]",d:"Cleans messy AI-generated code. Deletion-first"},
+  {n:"omc-teams",t:"skill-global",c:"/omc-teams [task]",d:"Multiple terminal panes with parallel AI workers"},
+  {n:"project-session-manager",t:"skill-global",c:"/project-session-manager [project]",d:"Worktree dev environment manager"},
+  {n:"release",t:"skill-global",c:"/release [version]",d:"Automated release: version bump, changelog, git tag"},
+  {n:"visual-verdict",t:"skill-global",c:"/visual-verdict [screenshot]",d:"Visual QA: does UI match reference?"},
+  {n:"learner",t:"skill-global",c:"/learner [name]",d:"Saves current workflow as reusable skill"},
+  {n:"skill",t:"skill-global",c:"/skill list or /skill add",d:"Manage skills: list, add, edit, remove"},
+  {n:"writer-memory",t:"skill-global",c:"/writer-memory [project]",d:"Tracks characters, arcs, scenes for writing projects"},
+  {n:"external-context",t:"skill-global",c:"/external-context [topic]",d:"Parallel doc-specialist agents for web search"},
+  {n:"nano-banana",t:"skill-global",c:"/nano-banana [image desc]",d:"Reasoning-driven image generation. Structured creative briefs"},
+  {n:"cinema-director",t:"skill-global",c:"/cinema-director [scene]",d:"Cinematic video prompts for Veo3, Kling, Luma"},
+  {n:"seedance-2",t:"skill-global",c:"/seedance-2 [motion desc]",d:"ByteDance Seedance 2.0 video generation"},
+  {n:"logo-creator",t:"skill-global",c:"/logo-creator [brand + style]",d:"Professional logos. Geometric primitives, negative space"},
+  {n:"photo-pack-generator",t:"skill-global",c:"/photo-pack-generator [reference]",d:"Photo pack from single reference. Preserves identity"},
+  {n:"ui-design",t:"skill-global",c:"/ui-design [app desc]",d:"High-fidelity UI/UX mockups. Mobile and web"},
+  {n:"media-media",t:"skill-global",c:"/media-media [model] [prompt]",d:"100+ AI models via muapi.ai. Image, video, music, audio"},
+  {n:"media-edit",t:"skill-global",c:"/media-edit [describe edit]",d:"AI editing: upscale, bg removal, face swap, lipsync"},
+  {n:"media-platform",t:"skill-global",c:"/media-platform setup",d:"Setup muapi.ai API keys and connectivity"},
+  {n:"x-viral-thread-generation",t:"skill-global",c:"/x-viral-thread-generation [topic]",d:"Research trends, generate high-engagement threads"},
+  {n:"x-content-posting",t:"skill-global",c:"/x-content-posting [content]",d:"Post threads, schedule, polls, quote-tweets"},
+  {n:"x-analytics-insights",t:"skill-global",c:"/x-analytics-insights [handle]",d:"Engagement analysis, best times, hashtag performance"},
+  {n:"x-engagement-interaction",t:"skill-global",c:"/x-engagement-interaction [rules]",d:"Auto-likes, replies, bookmarks based on rules"},
+  {n:"x-competitor-intelligence",t:"skill-global",c:"/x-competitor-intelligence @handle",d:"Deep analysis of competitor's X account"},
+  {n:"x-growth-automation",t:"skill-global",c:"/x-growth-automation [niche]",d:"Auto-follows, auto-comments, algorithm training"},
+  {n:"x-follower-monitoring",t:"skill-global",c:"/x-follower-monitoring [handle]",d:"Tracks followers, unfollowers, growth over time"},
+  {n:"x-twitter-scraping",t:"skill-global",c:"/x-twitter-scraping [target]",d:"Scrapes profiles, tweets, threads without API"},
+  {n:"x-discovery-explore",t:"skill-global",c:"/x-discovery-explore [niche]",d:"Find trending topics and new accounts"},
+  {n:"x-profile-management",t:"skill-global",c:"/x-profile-management [updates]",d:"Update bio, avatar, header, display name"},
+  {n:"sec-audit-context-building",t:"skill-global",c:"/sec-audit-context-building [path]",d:"Line-by-line code analysis for security context"},
+  {n:"sec-entry-point-analyzer",t:"skill-global",c:"/sec-entry-point-analyzer [path]",d:"Finds every attack surface in code"},
+  {n:"sec-semgrep-rule-creator",t:"skill-global",c:"/sec-semgrep-rule-creator [pattern]",d:"Creates custom security detection rules"},
+  {n:"sec-seatbelt-sandboxer",t:"skill-global",c:"/sec-seatbelt-sandboxer [app]",d:"macOS sandbox profiles for restricting apps"},
+  {n:"sec-zeroize-audit",t:"skill-global",c:"/sec-zeroize-audit [path]",d:"Finds where sensitive data isn't erased from memory"},
+  {n:"sec-audit-augmentation",t:"skill-global",c:"/sec-audit-augmentation [report]",d:"Maps scan findings to actual code locations"},
+  {n:"council",t:"skill-global",c:"/council [decision]",d:"5-advisor war room. Peer review. Chairman verdict. 3 modes"},
+  // WORKSPACE SKILLS (4)
+  {n:"wiki-ingest",t:"skill-workspace",c:"/wiki-ingest [file] [client]",d:"Ingest documents into knowledge engine"},
+  {n:"wiki-lint",t:"skill-workspace",c:"/wiki-lint",d:"Health check on wiki pages"},
+  {n:"wiki-query",t:"skill-workspace",c:"/wiki-query [question]",d:"Search knowledge wiki"},
+  {n:"council (workspace)",t:"skill-workspace",c:"/council [decision]",d:"5-advisor council (workspace copy)"},
+  // BUILT-IN SKILLS (6)
+  {n:"schedule",t:"skill-builtin",c:"/schedule",d:"Create scheduled tasks that run on intervals"},
+  {n:"xlsx",t:"skill-builtin",c:"Auto-triggers on spreadsheet tasks",d:"Read, edit, create Excel/CSV files"},
+  {n:"pdf",t:"skill-builtin",c:"Auto-triggers on PDF tasks",d:"Read, merge, split, watermark, create PDFs"},
+  {n:"docx",t:"skill-builtin",c:"Auto-triggers on Word doc tasks",d:"Create, read, edit Word documents"},
+  {n:"pptx",t:"skill-builtin",c:"Auto-triggers on PowerPoint tasks",d:"Create, read, edit presentations"},
+  {n:"skill-creator",t:"skill-builtin",c:"/skill-creator",d:"Create new skills, run evals, measure performance"},
+  // PROJECTS (26)
+  {n:"amazon-a-luxe",t:"project",c:"tashi-projects/amazon-a-luxe/",d:"Amazon A+ content writing"},
+  {n:"archived-research-buddy",t:"project",c:"tashi-projects/archived-research-buddy/",d:"PrimeFrame research"},
+  {n:"clean",t:"project",c:"tashi-projects/clean/",d:"Text/media cleaning"},
+  {n:"director-ai-studio",t:"project",c:"tashi-projects/director-ai-studio/",d:"Creative direction + song selection"},
+  {n:"hazel-creator",t:"project",c:"tashi-projects/hazel-creator/",d:"Image generation (Hazel)"},
+  {n:"hum-2",t:"project",c:"tashi-projects/hum-2/",d:"Human-like writing"},
+  {n:"human",t:"project",c:"tashi-projects/human/",d:"Write like a human"},
+  {n:"ifvg-crt-trading-analyzer",t:"project",c:"tashi-projects/ifvg-crt-trading-analyzer/",d:"Chart analysis (IFVG + CRT)"},
+  {n:"image-replicator",t:"project",c:"tashi-projects/image-replicator/",d:"Image style matching"},
+  {n:"kf-generator",t:"project",c:"tashi-projects/kf-generator/",d:"Knowledge file generation"},
+  {n:"maya-creator",t:"project",c:"tashi-projects/maya-creator/",d:"Image generation (Maya)"},
+  {n:"p1-creative-director-v3",t:"project",c:"tashi-projects/p1--creative-director-v3/",d:"Luxury brand creative direction"},
+  {n:"p2-viddirector-pro-v40",t:"project",c:"tashi-projects/p2--viddirector-pro-v40/",d:"Commercial video directing"},
+  {n:"p3-viddirector-pro-35",t:"project",c:"tashi-projects/p3-viddirector-pro-35/",d:"Short-form video architecture"},
+  {n:"prime-frame-research",t:"project",c:"tashi-projects/prime-frame-research/",d:"PrimeFrame research"},
+  {n:"rashi-style",t:"project",c:"tashi-projects/rashi-style/",d:"Rashi styling"},
+  {n:"roulette",t:"project",c:"tashi-projects/roulette/",d:"Games"},
+  {n:"tashi-10-creators-dream",t:"project",c:"tashi-projects/tashi-10-creators-dream/",d:"Premium AI copywriting"},
+  {n:"tashi-claude-architect-v3",t:"project",c:"tashi-projects/tashi-claude-architect-v3-143/",d:"Image generation prompts"},
+  {n:"tashi-kling-prompt",t:"project",c:"tashi-projects/tashi-kling-prompt/",d:"Kling video prompts"},
+  {n:"tashi-numerology-queen",t:"project",c:"tashi-projects/tashi-numerology-queen/",d:"Chaldean numerology"},
+  {n:"tashi-rashi-socials",t:"project",c:"tashi-projects/tashi-rashi-socials/",d:"Social media content"},
+  {n:"tashi-style",t:"project",c:"tashi-projects/tashi-style/",d:"Tashi wardrobe"},
+  {n:"the-slop-incinerator-x",t:"project",c:"tashi-projects/the-slop-incinerator-x/",d:"AI text humanizer"},
+  {n:"viral",t:"project",c:"tashi-projects/viral/",d:"Viral content creation"},
+  {n:"visual-prompt-engine",t:"project",c:"tashi-projects/visual-prompt-engine/",d:"Multi-platform AI prompt generation"},
+  // MCP / CONNECTORS (15)
+  {n:"capcut-smartcut",t:"mcp",c:"MCP Server (local)",d:"CapCut project analysis, smart cutting, silence removal"},
+  {n:"Gmail",t:"mcp",c:"Claude.ai Connector",d:"Read, search, draft, send emails"},
+  {n:"Google Drive",t:"mcp",c:"Claude.ai Connector",d:"Search and fetch documents"},
+  {n:"Google Calendar",t:"mcp",c:"Claude.ai Connector",d:"List, create, update, delete events"},
+  {n:"Canva",t:"mcp",c:"Claude.ai Connector",d:"Design creation, editing, export"},
+  {n:"Hugging Face",t:"mcp",c:"Claude.ai Connector",d:"Model search, space discovery, paper search"},
+  {n:"Claude in Chrome",t:"mcp",c:"Claude.ai Connector",d:"Browser automation, screenshots, navigation"},
+  {n:"Control Chrome",t:"mcp",c:"Claude.ai Connector",d:"Tab management, JS execution"},
+  {n:"Claude Preview",t:"mcp",c:"Claude.ai Connector",d:"Dev server preview, screenshots, console"},
+  {n:"Filesystem",t:"mcp",c:"Claude.ai Connector",d:"File read/write/search outside workspace"},
+  {n:"Memory",t:"mcp",c:"Claude.ai Connector",d:"Persistent knowledge graph"},
+  {n:"MCP Registry",t:"mcp",c:"Claude.ai Connector",d:"Search and suggest new connectors"},
+  {n:"Scheduled Tasks",t:"mcp",c:"Claude.ai Connector",d:"Create and manage recurring agents"},
+  {n:"PowerPoint",t:"mcp",c:"Claude.ai Connector",d:"Create, edit, export presentations"},
+  {n:"Word",t:"mcp",c:"Claude.ai Connector",d:"Create, edit, export documents"},
+  // CLAUDE CODE NATIVE SKILLS (5)
+  {n:"update-config",t:"skill-native",c:"/update-config",d:"Configure Claude Code harness via settings.json. Automated behaviors require hooks"},
+  {n:"keybindings-help",t:"skill-native",c:"/keybindings-help",d:"Customize keyboard shortcuts, rebind keys, add chord bindings"},
+  {n:"simplify",t:"skill-native",c:"/simplify",d:"Review changed code for reuse, quality, efficiency, then fix issues"},
+  {n:"loop",t:"skill-native",c:"/loop 5m /foo",d:"Run a prompt or slash command on recurring interval (default 10m)"},
+  {n:"claude-api",t:"skill-native",c:"/claude-api",d:"Build apps with Claude API, Anthropic SDK, Agent SDK"},
+  // PLUGIN SKILLS - MCP Dev (4)
+  {n:"build-mcp-server",t:"skill-plugin",c:"(plugin: mcp-server-dev)",d:"Build MCP servers from scratch with best practices"},
+  {n:"build-mcp-app",t:"skill-plugin",c:"(plugin: mcp-server-dev)",d:"Build MCP-powered applications"},
+  {n:"build-mcpb",t:"skill-plugin",c:"(plugin: mcp-server-dev)",d:"Build .mcpb Desktop Extension bundles"},
+  {n:"mcp-integration",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for integrating MCP into plugins"},
+  // PLUGIN SKILLS - Dev Tools (7)
+  {n:"claude-automation-recommender",t:"skill-plugin",c:"(plugin: claude-code-setup)",d:"Recommends automation via settings.json hooks"},
+  {n:"claude-md-improver",t:"skill-plugin",c:"(plugin: claude-md-management)",d:"Improve and optimize CLAUDE.md project instructions"},
+  {n:"command-development",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for developing OMC commands/skills"},
+  {n:"skill-development",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for developing skills from scratch"},
+  {n:"plugin-settings",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Plugin configuration and settings management"},
+  {n:"plugin-structure",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for structuring OMC plugins correctly"},
+  {n:"hook-development",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for developing hooks (pre/post tool triggers)"},
+  // PLUGIN SKILLS - Agent Dev (1)
+  {n:"agent-development",t:"skill-plugin",c:"(plugin: plugin-dev)",d:"Guide for developing custom agents"},
+  // PLUGIN SKILLS - Creative (2)
+  {n:"frontend-design",t:"skill-plugin",c:"(plugin: frontend-design)",d:"Frontend design with AI-generated mockups and components"},
+  {n:"writing-rules",t:"skill-plugin",c:"(plugin: hookify)",d:"Hookify writing rules for automated content standards"},
+  // PLUGIN SKILLS - Math & Play (2)
+  {n:"math-olympiad",t:"skill-plugin",c:"(plugin: math-olympiad)",d:"Mathematical olympiad problem solver"},
+  {n:"playground",t:"skill-plugin",c:"(plugin: playground)",d:"Playground environment for testing and experimentation"},
+  // PLUGIN SKILLS - Messaging (6)
+  {n:"telegram-access",t:"skill-plugin",c:"(plugin: telegram)",d:"Access Telegram bot for sending/receiving messages"},
+  {n:"telegram-configure",t:"skill-plugin",c:"(plugin: telegram)",d:"Configure Telegram bot token and chat settings"},
+  {n:"discord-access",t:"skill-plugin",c:"(plugin: discord)",d:"Access Discord bot for channel messaging"},
+  {n:"discord-configure",t:"skill-plugin",c:"(plugin: discord)",d:"Configure Discord bot token and server settings"},
+  {n:"imessage-access",t:"skill-plugin",c:"(plugin: imessage)",d:"Access iMessage for sending/reading messages on Mac"},
+  {n:"imessage-configure",t:"skill-plugin",c:"(plugin: imessage)",d:"Configure iMessage integration settings"},
+  // PLUGIN SKILLS - Examples (2)
+  {n:"example-skill",t:"skill-plugin",c:"(plugin: example-plugin)",d:"Example skill template for reference"},
+  {n:"example-command",t:"skill-plugin",c:"(plugin: example-plugin)",d:"Example command template for reference"},
+  // EXTRA SKILL (1)
+  {n:"omc-reference (skills dir)",t:"skill-plugin",c:"/omc-reference",d:"OMC reference catalog (alternate location in .claude/skills/)"},
+  // SYSTEM TOOLS (7)
+  {n:"Ollama + Qwen",t:"system",c:"ollama run qwen3-coder:30b",d:"Local AI on your computer. Offline, private. 30B code model"},
+  {n:"Instrumenta",t:"system",c:"PowerPoint > Tools > Add-ins",d:"270+ professional formatting buttons for PowerPoint (McKinsey-grade)"},
+  {n:"clean-slides",t:"system",c:"pptx generate slide.yaml -o out.pptx",d:"YAML to McKinsey-style PowerPoint slides"},
+  {n:"Document Generators",t:"system",c:"python3 ~/tashi-workspace/ai-office-automation/scripts/pptx-template.py",d:"Auto-create branded PowerPoint decks and Word reports"},
+  {n:"Telegram Bot",t:"system",c:"tashi-notify 'message'",d:"Phone notifications via @tashisleepy_ai_bot"},
+  {n:"FFmpeg",t:"system",c:"/usr/local/Cellar/ffmpeg/8.0.1_1/bin/ffmpeg",d:"Video/audio processing, stitching, transcoding, effects"},
+  {n:"Knowledge Engine",t:"system",c:"MEMVID_DISABLE=1 python3 knowledge-engine/bridge.py [cmd]",d:"Wiki + search + ingest. Persistent knowledge base"},
+];
+
+const TYPE_LABELS = {
+  'agent-global':'Global Agent','agent-project':'Project Agent','agent-stack':'Stack Agent',
+  'skill-global':'Skill','skill-workspace':'Workspace Skill','skill-builtin':'Built-in Skill',
+  'skill-native':'Native Skill','skill-plugin':'Plugin Skill',
+  'project':'Claude Project','mcp':'MCP/Connector','system':'System Tool'
+};
+const TYPE_COLORS = {
+  'agent-global':'#58a6ff','agent-project':'#a371f7','agent-stack':'#d29922',
+  'skill-global':'#3fb950','skill-workspace':'#3fb950','skill-builtin':'#7d8590',
+  'skill-native':'#79c0ff','skill-plugin':'#d2a8ff',
+  'project':'#f0883e','mcp':'#f85149','system':'#e3b341'
+};
+
+function renderToolsTable(data) {
+  const body = document.getElementById('tools-body');
+  document.getElementById('tools-count').textContent = data.length + ' of ' + TOOLS_DATA.length + ' items';
+  if (!data.length) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No matching tools found</td></tr>'; return; }
+  body.innerHTML = data.map((r,i) =>
+    '<tr>' +
+    '<td style="color:var(--text-dim)">' + (i+1) + '</td>' +
+    '<td style="font-weight:600">' + r.n + '</td>' +
+    '<td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;background:' + (TYPE_COLORS[r.t]||'#333') + '22;color:' + (TYPE_COLORS[r.t]||'#999') + '">' + (TYPE_LABELS[r.t]||r.t) + '</span></td>' +
+    '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + r.c + '</td>' +
+    '<td style="color:var(--text-muted);font-size:12px">' + r.d + '</td>' +
+    '</tr>'
+  ).join('');
+}
+
+function filterTools() {
+  const q = (document.getElementById('tool-filter').value || '').toLowerCase();
+  const typeF = document.getElementById('tool-type-filter').value;
+  const filtered = TOOLS_DATA.filter(r => {
+    if (typeF && r.t !== typeF) return false;
+    if (q && !r.n.toLowerCase().includes(q) && !r.d.toLowerCase().includes(q) && !r.c.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderToolsTable(filtered);
+}
+
+// Init tools table on load - merge hardcoded TOOLS_DATA with dynamic registry
+async function loadToolsWithRegistry() {
+  let merged = [...TOOLS_DATA];
+  try {
+    const res = await fetch('/tools-registry.json', { cache: 'no-store' });
+    if (res.ok) {
+      const registry = await res.json();
+      if (registry && Array.isArray(registry.tools)) {
+        // Prepend registered tools (newest first)
+        const registered = registry.tools.slice().reverse().map(t => ({
+          n: t.n,
+          t: t.t,
+          c: t.c,
+          d: t.d + (t.created ? '  ·  registered ' + t.created.split(' ')[0] : '')
+        }));
+        merged = [...registered, ...TOOLS_DATA];
+      }
+    }
+  } catch (e) {
+    console.log('tools-registry.json not loaded via server, using static TOOLS_DATA only');
+  }
+  renderToolsTable(merged);
+}
+setTimeout(loadToolsWithRegistry, 100);
+
+// ==================== MONTH IN NUTSHELL ====================
+async function loadMonthInNutshell() {
+  const container = document.getElementById('month-content');
+  if (!container) return;
+
+  container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)">Loading monthly summary...</div>';
+
+  try {
+    const res = await fetch('/monthly-summary.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Summary not found');
+    const data = await res.json();
+    renderMonthInNutshell(data);
+  } catch (e) {
+    container.innerHTML = `
+      <div style="padding:40px;text-align:center">
+        <div style="color:var(--accent);font-size:16px;margin-bottom:12px">Monthly summary not generated yet</div>
+        <div style="color:var(--text-dim);font-size:13px;margin-bottom:20px">Run this in terminal to generate:</div>
+        <code style="background:var(--surface);padding:10px 16px;border-radius:6px;display:inline-block;font-family:monospace;color:var(--text)">~/tashi-workspace/knowledge-engine/scripts/generate-monthly-summary.sh</code>
+        <div style="color:var(--text-dim);font-size:12px;margin-top:20px">Or edit the pre-built config at <code>monthly-summary-config.json</code> to customize rates/hours.</div>
+      </div>`;
+  }
+}
+
+function fmt(n) { return n.toLocaleString('en-US'); }
+function fmtUsd(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+
+function renderMonthInNutshell(d) {
+  const c = d.counts;
+  const h = d.human_hours_estimate;
+  const v = d.value_proposition;
+  const tools = d.tools_by_type || [];
+
+  const toolsHtml = tools.map(t => `
+    <div style="background:var(--surface);padding:12px;border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:22px;font-weight:700;color:var(--accent)">${t.count}</div>
+      <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">${t.type.replace(/-/g, ' ')}</div>
+    </div>`).join('');
+
+  const html = `
+    <div style="max-width:1100px;margin:0 auto">
+
+      <!-- HEADER -->
+      <div style="margin-bottom:24px">
+        <div style="font-size:13px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase">Month in a Nutshell</div>
+        <div style="font-size:32px;font-weight:800;color:var(--text);margin-top:4px">${d.month_label}</div>
+        <div style="color:var(--text-dim);font-size:13px;margin-top:4px">${d.period} &nbsp;·&nbsp; Generated ${d.generated_at}</div>
+      </div>
+
+      <!-- TOP KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+        <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:36px;font-weight:800;color:var(--text)">${c.sessions}</div>
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Sessions</div>
+        </div>
+        <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:36px;font-weight:800;color:var(--text)">${c.tools_registered}</div>
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Tools Registered</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">+ ${c.tools_updated} updated</div>
+        </div>
+        <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:36px;font-weight:800;color:var(--text)">${fmt(c.documents.total)}</div>
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Documents Created</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${c.documents.pdf} PDF · ${c.documents.docx} DOCX · ${c.documents.pptx} PPTX · ${c.documents.md} MD</div>
+        </div>
+        <div style="background:linear-gradient(135deg,rgba(255,107,0,0.15),rgba(255,107,0,0.05));padding:20px;border-radius:10px;border:1px solid rgba(255,107,0,0.4)">
+          <div style="font-size:36px;font-weight:800;color:var(--accent)">${fmt(h.total)}</div>
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Est. Human Hours Saved</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">~${Math.round(h.total/40)} weeks of 1 FTE</div>
+        </div>
+      </div>
+
+      <!-- ROI TIERS -->
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px">💰 Value Proposition (USD)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">Conservative</div>
+            <div style="font-size:28px;font-weight:800;color:var(--text);margin-top:8px">${fmtUsd(v.conservative.total_value)}</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${v.conservative.label} · $${v.conservative.rate_per_hour}/hr</div>
+          </div>
+          <div style="background:linear-gradient(135deg,rgba(255,107,0,0.2),rgba(255,107,0,0.05));padding:20px;border-radius:10px;border:1px solid rgba(255,107,0,0.5)">
+            <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-weight:600">Realistic ⭐</div>
+            <div style="font-size:28px;font-weight:800;color:var(--accent);margin-top:8px">${fmtUsd(v.realistic.total_value)}</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${v.realistic.label} · $${v.realistic.rate_per_hour}/hr</div>
+          </div>
+          <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">High-end</div>
+            <div style="font-size:28px;font-weight:800;color:var(--text);margin-top:8px">${fmtUsd(v.high_end.total_value)}</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${v.high_end.label} · $${v.high_end.rate_per_hour}/hr</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOOLS BY TYPE -->
+      ${tools.length > 0 ? `
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px">🛠️ Tools Breakdown by Type</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+          ${toolsHtml}
+        </div>
+      </div>` : ''}
+
+      <!-- HOURS BREAKDOWN -->
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px">⏱️ Hours Estimate Breakdown</div>
+        <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:20px;text-align:center">
+            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.session_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">SESSIONS</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.tool_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">TOOLS</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.pdf_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">PDFs</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.docx_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">DOCX</div></div>
+            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.pptx_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">PPTX</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISCLAIMER -->
+      <div style="background:var(--surface);padding:16px 20px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
+          <strong style="color:var(--text)">⚠️ Disclaimer:</strong> ${d.disclaimer}
+          <br><br>
+          <strong style="color:var(--text)">🔧 Customize:</strong> Edit <code style="background:var(--bg);padding:2px 6px;border-radius:3px">monthly-summary-config.json</code> to change rates and hour multipliers. Re-run <code style="background:var(--bg);padding:2px 6px;border-radius:3px">./scripts/generate-monthly-summary.sh</code> to refresh.
+        </div>
+      </div>
+
+      <!-- REFRESH BUTTON -->
+      <div style="text-align:center">
+        <button onclick="loadMonthInNutshell()" style="background:var(--accent);color:white;border:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">🔄 Refresh</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('month-content').innerHTML = html;
+}
 </script>
 </body>
 </html>

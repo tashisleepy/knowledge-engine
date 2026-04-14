@@ -273,6 +273,17 @@ class KnowledgeEngineHandler(BaseHTTPRequestHandler):
             code, body = handle_log()
             self._send(code, body)
 
+        # Static JSON files at root (for UI tabs that fetch them directly)
+        elif path in ('/monthly-summary.json', '/tools-registry.json'):
+            filename = path.lstrip('/')
+            filepath = os.path.join(BASE_DIR, filename)
+            if os.path.exists(filepath):
+                with open(filepath, 'rb') as f:
+                    body = f.read()
+                self._send(200, body, 'application/json; charset=utf-8')
+            else:
+                self._send(404, _json_response({'error': f'File not found: {filename}'}))
+
         else:
             self._send(404, _json_response({'error': f'Unknown endpoint: {path}'}))
 

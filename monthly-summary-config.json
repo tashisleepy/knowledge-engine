@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "description": "Rate assumptions for monthly ROI calculation. Dubai/UK/US market rates only. Never Indian pricing.",
+  "rates": {
+    "conservative_usd_per_hour": 150,
+    "realistic_usd_per_hour": 350,
+    "high_end_usd_per_hour": 750
+  },
+  "rate_context": {
+    "conservative": "Dubai/UK mid-market consultant, $150/hr - typical rate for solo operator or small agency",
+    "realistic": "Senior Dubai consultant or London/NYC specialist, $350/hr - standard for strategy/AI work",
+    "high_end": "Big 4 / McKinsey / BCG tier Dubai/UK/US, $750/hr - partner-grade engagements"
+  },
+  "hours_multipliers": {
+    "comment": "Estimated human hours. Sessions are the main driver (work done in a session = 20hrs avg). Documents/tools COUNTED ONLY for standalone deliverables not tied to a session, to avoid double-counting.",
+    "session_default": 20,
+    "document_pdf": 0,
+    "document_docx": 0,
+    "document_pptx": 4,
+    "document_md": 0,
+    "tool_agent": 0,
+    "tool_skill": 0,
+    "tool_script": 0,
+    "tool_knowledge_file": 0,
+    "tool_prompt": 0,
+    "tool_mcp": 0,
+    "tool_project": 0,
+    "_explanation": "Non-zero multipliers only for items that represent INCREMENTAL work beyond what's captured in sessions. PPTX is often polished separately. Edit this file to adjust for your workflow."
+  },
+  "currency": "USD",
+  "notes": "Conservative = junior freelancer. Realistic = senior consultant. High-end = Big 4 / McKinsey tier. Hours are estimates based on industry averages for comparable quality work."
+}
