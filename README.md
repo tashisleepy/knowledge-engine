@@ -151,33 +151,78 @@ Supported source formats: `.md`, `.txt`, `.pdf`
 
 ---
 
-## Date-Range Activity Reports
+## Tired of telling your boss what you did last week?
 
-Generate work reports filtered by time period from `log.md`. Useful for weekly reviews, monthly summaries, quarterly retrospectives, or any custom date range.
+Stop scrolling through Slack. Stop guessing dates. Stop writing status reports from memory.
+
+Knowledge Engine remembers every session you've ever logged. One command and you get a clean markdown report - weekly, monthly, quarterly, or any custom range you want. Filter by client. Export to file. Send it.
+
+### Just ask Claude (or any LLM with this repo)
+
+Drop these prompts into your AI assistant. It will run the script and hand you the report:
+
+```
+"Give me my work report for the last 7 days."
+"Generate a quarterly retrospective for client {slug}."
+"Show me everything I worked on between 2026-01-01 and 2026-03-31."
+"Build a monthly status update for my boss covering all clients."
+```
+
+### Or run it yourself
 
 ```bash
-# Quick presets
+# Quick presets - one flag, one report
 ./scripts/report.sh --week        # Last 7 days
 ./scripts/report.sh --month       # Last 30 days
 ./scripts/report.sh --quarter     # Last 90 days
 ./scripts/report.sh --year        # Last 365 days
 
-# Custom ranges
+# Custom date ranges
 ./scripts/report.sh --since 2026-04-01
 ./scripts/report.sh --between 2026-01-01 2026-03-31
 
-# Filter by client
-./scripts/report.sh --month --client client-slug
-./scripts/report.sh --quarter --client client-slug
-```
+# Narrow to one client
+./scripts/report.sh --month --client {slug}
+./scripts/report.sh --quarter --client {slug}
 
-Output is markdown to stdout. Pipe to a file to archive:
-
-```bash
+# Save it for the record
 ./scripts/report.sh --week > reports/weekly-$(date +%Y-%m-%d).md
 ```
 
-The script parses log entries with `[YYYY-MM-DD HH:MM]` timestamps and filters by date range. Optionally narrows to a specific client via the `Client:` field or wiki path.
+The script reads timestamped entries from `log.md`, filters by your date range, and outputs clean markdown to stdout.
+
+---
+
+## How do you record your sessions?
+
+Two ways. One automatic. One manual for the high-signal stuff.
+
+### Automatic (every ingest)
+
+Every time you ingest a source, Knowledge Engine auto-logs it with a timestamp:
+
+```bash
+python3 bridge.py ingest path/to/document.pdf {client-slug}
+# Auto-logs: ## [YYYY-MM-DD HH:MM] INGEST | source -> wiki/path (created)
+```
+
+### Manual (high-signal sessions worth remembering)
+
+For important conversations, deliverables, or decisions worth a permanent record, just tell Claude:
+
+```
+"Save this session to Knowledge Engine wiki under client {slug}."
+"Log this work session in my wiki - title it {topic}."
+"Add today's session to the wiki with full details."
+```
+
+Claude will:
+1. Create a source file at `sources/conversations/session-YYYY-MM-DD-{slug}.md`
+2. Create a wiki page at `wiki/{client}/session-YYYY-MM-DD-{slug}.md` with proper YAML frontmatter
+3. Append a timestamped entry to `log.md` (newest at top)
+4. Update `index.md` so it shows up in future reports
+
+The session is now permanent. It compounds. It's queryable by date. It's filterable by client. It's the source of every future status report you generate.
 
 ---
 
