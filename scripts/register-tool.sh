@@ -99,45 +99,91 @@ fi
 NOW="$(date '+%Y-%m-%d %H:%M')"
 TODAY="$(date '+%Y-%m-%d')"
 
-# Append entry to tools-registry.json
+# Check if tool with this name already exists (idempotency check)
+EXISTING_INDEX=$(jq --arg name "$NAME" '[.tools[] | .n] | index($name)' "$REGISTRY_FILE")
 TMP_FILE="$(mktemp)"
-jq --arg name "$NAME" \
-   --arg type "$TYPE" \
-   --arg cmd "$COMMAND" \
-   --arg desc "$DESCRIPTION" \
-   --arg session "$SESSION_SLUG" \
-   --arg path_hint "$PATH_HINT" \
-   --arg ts "$NOW" \
-   --arg today "$TODAY" \
-   '.tools += [{
-      "n": $name,
-      "t": $type,
-      "c": $cmd,
-      "d": $desc,
-      "created": $ts,
-      "source_session": $session,
-      "path": $path_hint
-    }] | .updated = $today' \
-  "$REGISTRY_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$REGISTRY_FILE"
 
-# Append log entry (prepend under the header)
+if [[ "$EXISTING_INDEX" != "null" ]]; then
+  # UPDATE existing entry - preserve created timestamp + version history
+  EXISTING_CREATED=$(jq -r --arg name "$NAME" '.tools[] | select(.n == $name) | .created' "$REGISTRY_FILE")
+  EXISTING_VERSION=$(jq -r --arg name "$NAME" '.tools[] | select(.n == $name) | (.version // 1)' "$REGISTRY_FILE")
+  NEW_VERSION=$((EXISTING_VERSION + 1))
+
+  jq --arg name "$NAME" \
+     --arg type "$TYPE" \
+     --arg cmd "$COMMAND" \
+     --arg desc "$DESCRIPTION" \
+     --arg session "$SESSION_SLUG" \
+     --arg path_hint "$PATH_HINT" \
+     --arg now "$NOW" \
+     --arg today "$TODAY" \
+     --arg created "$EXISTING_CREATED" \
+     --argjson new_version "$NEW_VERSION" \
+     '.tools = [.tools[] | if .n == $name then {
+        "n": $name,
+        "t": $type,
+        "c": $cmd,
+        "d": $desc,
+        "created": $created,
+        "updated": $now,
+        "version": $new_version,
+        "source_session": $session,
+        "path": $path_hint
+      } else . end] | .updated = $today' \
+    "$REGISTRY_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$REGISTRY_FILE"
+
+  ACTION="TOOL-UPDATED"
+  echo "Updated: $NAME ($TYPE) - version $NEW_VERSION"
+  echo "Original created: $EXISTING_CREATED"
+  echo "Updated at: $NOW"
+else
+  # CREATE new entry
+  jq --arg name "$NAME" \
+     --arg type "$TYPE" \
+     --arg cmd "$COMMAND" \
+     --arg desc "$DESCRIPTION" \
+     --arg session "$SESSION_SLUG" \
+     --arg path_hint "$PATH_HINT" \
+     --arg ts "$NOW" \
+     --arg today "$TODAY" \
+     '.tools += [{
+        "n": $name,
+        "t": $type,
+        "c": $cmd,
+        "d": $desc,
+        "created": $ts,
+        "updated": $ts,
+        "version": 1,
+        "source_session": $session,
+        "path": $path_hint
+      }] | .updated = $today' \
+    "$REGISTRY_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$REGISTRY_FILE"
+
+  ACTION="TOOL-REGISTERED"
+  echo "Registered: $NAME ($TYPE) at $NOW"
+fi
+
+# Prepend log entry (newest at top, after header)
 TMP_LOG="$(mktemp)"
 {
   head -2 "$LOG_FILE"
   echo ""
-  echo "## [$NOW] TOOL-REGISTERED | $NAME ($TYPE)"
+  echo "## [$NOW] $ACTION | $NAME ($TYPE)"
   echo "- Name: $NAME"
   echo "- Type: $TYPE"
   echo "- Command: $COMMAND"
   echo "- Description: $DESCRIPTION"
   [[ -n "$SESSION_SLUG" ]] && echo "- Source session: [[$SESSION_SLUG]]"
   [[ -n "$PATH_HINT" ]] && echo "- Path: $PATH_HINT"
+  if [[ "$ACTION" == "TOOL-UPDATED" ]]; then
+    echo "- Version: $NEW_VERSION (was $EXISTING_VERSION)"
+    echo "- Originally created: $EXISTING_CREATED"
+  fi
   echo ""
   tail -n +3 "$LOG_FILE"
 } > "$TMP_LOG" && mv "$TMP_LOG" "$LOG_FILE"
 
-echo "Registered: $NAME ($TYPE) at $NOW"
 echo "Registry: $REGISTRY_FILE"
 echo "Log: $LOG_FILE"
 echo ""
-echo "Total tools in registry: $(jq '.tools | length' "$REGISTRY_FILE")"
+echo "Total unique tools in registry: $(jq '.tools | length' "$REGISTRY_FILE")"
