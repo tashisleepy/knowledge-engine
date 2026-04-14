@@ -1954,10 +1954,134 @@ function renderMonthInNutshell(d) {
 
       <!-- TOOLS BY TYPE -->
       ${tools.length > 0 ? `
-      <div style="margin-bottom:32px">
+      <div style="margin-bottom:24px">
         <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px">🛠️ Tools Breakdown by Type</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
           ${toolsHtml}
+        </div>
+      </div>` : ''}
+
+      <!-- TOOLS DETAIL LIST -->
+      ${d.tools_detail && d.tools_detail.length > 0 ? `
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">📋 Every Tool/Skill/Agent Built This Month</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Full list with descriptions. Click type tabs to filter.</div>
+        ${d.tools_detail.map(group => `
+          <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:10px" ${group.count <= 5 ? 'open' : ''}>
+            <summary style="padding:14px 20px;cursor:pointer;font-weight:600;color:var(--text);display:flex;justify-content:space-between;align-items:center">
+              <span>${group.type.replace(/-/g, ' ').toUpperCase()} <span style="color:var(--text-dim);font-weight:400;font-size:11px;margin-left:8px">${group.count} items</span></span>
+              <span style="color:var(--text-dim);font-size:11px">click to expand/collapse</span>
+            </summary>
+            <div style="padding:0 20px 16px 20px">
+              ${group.items.map(item => `
+                <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-weight:600;color:var(--text);font-size:13px;margin-bottom:4px">${item.name}</div>
+                      <div style="color:var(--text-dim);font-size:11.5px;line-height:1.5">${item.description || '(no description)'}</div>
+                      ${item.path ? `<div style="color:var(--text-dim);font-size:10px;margin-top:4px;font-family:monospace;opacity:0.6">${item.path}</div>` : ''}
+                    </div>
+                    <div style="text-align:right;white-space:nowrap">
+                      <div style="color:var(--accent);font-size:10px;font-weight:600">${item.created ? item.created.split(' ')[0] : ''}</div>
+                      <div style="color:var(--text-dim);font-size:9px;margin-top:2px">${item.created ? item.created.split(' ')[1] || '' : ''}</div>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        `).join('')}
+      </div>` : ''}
+
+      <!-- UPDATES SECTION -->
+      ${(d.tools_updated && d.tools_updated.length > 0) || (d.sessions_updated && d.sessions_updated.length > 0) ? `
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">🔄 What Got Updated This Month</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Tools with version 2+ or sessions that got new content appended. Full audit trail - no duplication.</div>
+
+        ${d.tools_updated && d.tools_updated.length > 0 ? `
+        <details open style="background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
+          <summary style="padding:14px 20px;cursor:pointer;font-weight:600;color:var(--text)">
+            Tools with updates <span style="color:var(--text-dim);font-weight:400;font-size:11px;margin-left:8px">${d.tools_updated.length} items</span>
+          </summary>
+          <div style="padding:0 20px 16px 20px">
+            ${d.tools_updated.map(t => `
+              <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                      <div style="font-weight:600;color:var(--text);font-size:13px">${t.name}</div>
+                      <div style="background:rgba(255,107,0,0.2);color:var(--accent);font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:0.5px">v${t.version}</div>
+                      <div style="color:var(--text-dim);font-size:10px">${t.type}</div>
+                    </div>
+                    <div style="color:var(--text-dim);font-size:11.5px;line-height:1.5">${t.description || '(no description)'}</div>
+                    ${t.path ? `<div style="color:var(--text-dim);font-size:10px;margin-top:4px;font-family:monospace;opacity:0.6">${t.path}</div>` : ''}
+                  </div>
+                  <div style="text-align:right;white-space:nowrap">
+                    <div style="color:var(--text-dim);font-size:9px">CREATED</div>
+                    <div style="color:var(--text);font-size:10px;margin-bottom:4px">${t.created}</div>
+                    <div style="color:var(--accent);font-size:9px">LAST UPDATE</div>
+                    <div style="color:var(--accent);font-size:10px;font-weight:600">${t.updated}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </details>` : ''}
+
+        ${d.sessions_updated && d.sessions_updated.length > 0 ? `
+        <details open style="background:var(--surface);border:1px solid var(--border);border-radius:8px">
+          <summary style="padding:14px 20px;cursor:pointer;font-weight:600;color:var(--text)">
+            Sessions with multiple updates <span style="color:var(--text-dim);font-weight:400;font-size:11px;margin-left:8px">${d.sessions_updated.length} items</span>
+          </summary>
+          <div style="padding:0 20px 16px 20px">
+            ${d.sessions_updated.map(s => `
+              <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;color:var(--text);font-size:12px;font-family:monospace">${s.wiki_path}</div>
+                  </div>
+                  <div style="display:flex;gap:16px;align-items:center;white-space:nowrap">
+                    <div>
+                      <div style="color:var(--accent);font-size:18px;font-weight:800;text-align:center">${s.update_count}x</div>
+                      <div style="color:var(--text-dim);font-size:9px;text-align:center">UPDATES</div>
+                    </div>
+                    <div>
+                      <div style="color:var(--text-dim);font-size:9px">LAST</div>
+                      <div style="color:var(--text);font-size:10px">${s.last_updated}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </details>` : ''}
+      </div>` : ''}
+
+      <!-- SESSIONS LIST -->
+      ${d.sessions_list && d.sessions_list.length > 0 ? `
+      <div style="margin-bottom:32px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">📂 Every Session Logged This Month</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px">${d.sessions_list.length} unique sessions. Click to open wiki page.</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:rgba(255,255,255,0.02)">
+                <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Date</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Client</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Title</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${d.sessions_list.map(s => `
+                <tr style="border-top:1px solid rgba(255,255,255,0.04)">
+                  <td style="padding:10px 14px;font-size:11px;color:var(--accent);white-space:nowrap;font-weight:600">${s.date}</td>
+                  <td style="padding:10px 14px;font-size:11px;color:var(--text-dim);white-space:nowrap">${s.client}</td>
+                  <td style="padding:10px 14px;font-size:12px;color:var(--text)"><a href="#" onclick="switchTab('wiki');loadWikiPage('${s.wiki_path}');return false;" style="color:var(--text);text-decoration:none;border-bottom:1px dotted var(--text-dim)">${s.title}</a></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       </div>` : ''}
 

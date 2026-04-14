@@ -59,6 +59,32 @@ TOOLS_BY_TYPE=$(jq --arg m "$MONTH" '
   | map({type: .[0].t, count: length})
 ' "$REGISTRY_FILE")
 
+# Full tools list with names + descriptions (grouped by type for display)
+TOOLS_DETAIL=$(jq --arg m "$MONTH" '
+  [.tools[] | select(.created | startswith($m))]
+  | group_by(.t)
+  | map({
+      type: .[0].t,
+      count: length,
+      items: (. | map({name: .n, description: .d, created: .created, path: .path}))
+    })
+' "$REGISTRY_FILE")
+
+# List of unique sessions this month from wiki files (more reliable than parsing log)
+SESSIONS_LIST=$(find "$ROOT_DIR/wiki" -name "session-${MONTH}-*.md" -type f 2>/dev/null \
+  | while read -r f; do
+      basename_f=$(basename "$f" .md)
+      dir_f=$(basename "$(dirname "$f")")
+      # Extract date from filename: session-YYYY-MM-DD-slug
+      date_part=$(echo "$basename_f" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
+      slug=$(echo "$basename_f" | sed "s/session-${date_part}-//")
+      # Try to read title from frontmatter
+      title=$(grep -m1 "^title:" "$f" 2>/dev/null | sed 's/^title: *//' | head -c 120)
+      [[ -z "$title" ]] && title="$slug"
+      echo "{\"date\":\"$date_part\",\"client\":\"$dir_f\",\"slug\":\"$slug\",\"title\":\"$(echo "$title" | sed 's/"/\\"/g')\",\"wiki_path\":\"$dir_f/$basename_f.md\"}"
+    done \
+  | jq -s 'sort_by(.date) | reverse' 2>/dev/null || echo '[]')
+
 # Documents count in Downloads from month start
 PDF_COUNT=$(find ~/Downloads -type f -name "*.pdf" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
 DOCX_COUNT=$(find ~/Downloads -type f -name "*.docx" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
@@ -68,6 +94,33 @@ MD_COUNT=$(find ~/Downloads -type f -name "*.md" -newermt "$START_DATE" 2>/dev/n
 # TOOL-REGISTERED count in log
 TOOL_REG_COUNT=$(grep -cE "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] TOOL-REGISTERED " "$LOG_FILE" 2>/dev/null || echo 0)
 TOOL_UPD_COUNT=$(grep -cE "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] TOOL-UPDATED " "$LOG_FILE" 2>/dev/null || echo 0)
+
+# Updated tools with version info (current version >= 2 = was updated)
+TOOLS_UPDATED=$(jq --arg m "$MONTH" '
+  [.tools[]
+   | select(.created | startswith($m))
+   | select((.version // 1) >= 2)
+   | {name: .n, type: .t, description: .d, version: .version, created: .created, updated: .updated, path: .path}]
+  | sort_by(.updated) | reverse
+' "$REGISTRY_FILE" 2>/dev/null || echo '[]')
+
+# Sessions updated multiple times (look for UPDATE entries in log)
+# Parse each line: ## [YYYY-MM-DD HH:MM] UPDATE | ... -> {wiki_path} (...) [...]
+SESSIONS_UPDATED_RAW=$(grep -E "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] UPDATE " "$LOG_FILE" 2>/dev/null)
+if [[ -n "$SESSIONS_UPDATED_RAW" ]]; then
+  SESSIONS_UPDATED=$(echo "$SESSIONS_UPDATED_RAW" \
+    | while IFS= read -r line; do
+        ts=$(echo "$line" | grep -oE '\[[0-9-]+ [0-9:]+\]' | head -1 | tr -d '[]')
+        path=$(echo "$line" | grep -oE '\-> [^ ]+' | head -1 | sed 's/^-> //')
+        if [[ -n "$ts" && -n "$path" ]]; then
+          echo "{\"timestamp\":\"$ts\",\"wiki_path\":\"$path\"}"
+        fi
+      done \
+    | jq -s 'group_by(.wiki_path) | map({wiki_path: .[0].wiki_path, update_count: length, last_updated: .[0].timestamp}) | sort_by(.update_count) | reverse' 2>/dev/null)
+  [[ -z "$SESSIONS_UPDATED" ]] && SESSIONS_UPDATED='[]'
+else
+  SESSIONS_UPDATED='[]'
+fi
 
 # Compute estimated hours using multipliers from config
 HOURS_CALC=$(jq -n \
@@ -124,6 +177,10 @@ jq -n \
   --argjson other_ingests "$OTHER_INGESTS" \
   --argjson tools_total "$TOOLS_TOTAL" \
   --argjson tools_by_type "$TOOLS_BY_TYPE" \
+  --argjson tools_detail "$TOOLS_DETAIL" \
+  --argjson tools_updated "$TOOLS_UPDATED" \
+  --argjson sessions_updated "$SESSIONS_UPDATED" \
+  --argjson sessions_list "$SESSIONS_LIST" \
   --argjson pdf "$PDF_COUNT" \
   --argjson docx "$DOCX_COUNT" \
   --argjson pptx "$PPTX_COUNT" \
@@ -158,6 +215,10 @@ jq -n \
       }
     },
     tools_by_type: $tools_by_type,
+    tools_detail: $tools_detail,
+    tools_updated: $tools_updated,
+    sessions_updated: $sessions_updated,
+    sessions_list: $sessions_list,
     human_hours_estimate: $hours,
     value_proposition: {
       currency: "USD",
