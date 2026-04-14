@@ -151,6 +151,36 @@ Supported source formats: `.md`, `.txt`, `.pdf`
 
 ---
 
+## Date-Range Activity Reports
+
+Generate work reports filtered by time period from `log.md`. Useful for weekly reviews, monthly summaries, quarterly retrospectives, or any custom date range.
+
+```bash
+# Quick presets
+./scripts/report.sh --week        # Last 7 days
+./scripts/report.sh --month       # Last 30 days
+./scripts/report.sh --quarter     # Last 90 days
+./scripts/report.sh --year        # Last 365 days
+
+# Custom ranges
+./scripts/report.sh --since 2026-04-01
+./scripts/report.sh --between 2026-01-01 2026-03-31
+
+# Filter by client
+./scripts/report.sh --month --client client-slug
+./scripts/report.sh --quarter --client client-slug
+```
+
+Output is markdown to stdout. Pipe to a file to archive:
+
+```bash
+./scripts/report.sh --week > reports/weekly-$(date +%Y-%m-%d).md
+```
+
+The script parses log entries with `[YYYY-MM-DD HH:MM]` timestamps and filters by date range. Optionally narrows to a specific client via the `Client:` field or wiki path.
+
+---
+
 ## Web UI
 
 Start with `python3 server.py` and open `http://localhost:3141`.
