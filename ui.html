@@ -1269,32 +1269,37 @@ function renderWikiPage(data) {
 // ---- SIMPLE MARKDOWN RENDERER ----
 function renderMarkdown(md) {
   if (!md) return '';
-  let html = md;
 
-  // Code blocks (fenced) - process FIRST before anything else munges them
+  // XSS defense: pre-escape '<' and '&' in the source before any markdown transforms.
+  // Markdown syntax chars (#, >, *, `, |, -, [, ~) are not HTML-special, so they survive
+  // and downstream regexes still match. All generated <tag> wrappers below are safe
+  // because their captured content has already been neutralized.
+  let html = String(md).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // Code blocks (fenced) - process FIRST before anything else munges them.
+  // Content is already escaped via the pre-pass above; lang is \w+ so it's alphanumeric-safe.
   const codeBlocks = [];
   html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     const idx = codeBlocks.length;
-    codeBlocks.push(`<pre><code class="lang-${escHtml(lang)}">${escHtml(code.trim())}</code></pre>`);
+    codeBlocks.push(`<pre><code class="lang-${lang}">${code.trim()}</code></pre>`);
     return `\x00CODE${idx}\x00`;
   });
 
-  // Inline code
-  html = html.replace(/`([^`\n]+)`/g, (_, c) => `<code>${escHtml(c)}</code>`);
+  // Inline code — content already escaped
+  html = html.replace(/`([^`\n]+)`/g, (_, c) => `<code>${c}</code>`);
 
-  // Wikilinks [[path]] - before regular links
+  // Wikilinks [[path]] - before regular links. Label content is already escaped;
+  // escAttr handles the attribute-context escape for " and ' in data-target.
   html = html.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
     const parts = target.split('|');
     const path = parts[0].trim();
     const label = parts[1] ? parts[1].trim() : path.split('/').pop();
-    return `<a class="wikilink" data-target="${escAttr(path)}" href="#">${escHtml(label)}</a>`;
+    return `<a class="wikilink" data-target="${escAttr(path)}" href="#">${label}</a>`;
   });
 
-  // Bold
+  // Bold / italic / strikethrough — captured content already escaped
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic
   html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-  // Strikethrough
   html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
 
   // Tables

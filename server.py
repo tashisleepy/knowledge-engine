@@ -126,10 +126,33 @@ def handle_wiki_page(path_suffix: str):
     Read a specific wiki page. path_suffix is like 'demo-retail/sample-proposal'
     (no .md extension - we add it).
     """
-    # Sanitize: no path traversal
-    clean = path_suffix.replace('..', '').lstrip('/')
+    # Sanitize input. The old `.replace('..', '')` is bypassable (e.g. '....//' → '..//'),
+    # so rely on realpath containment instead: any candidate we open MUST resolve inside
+    # WIKI_DIR or BASE_DIR. This defeats both literal '../' and symlink escapes.
+    clean = path_suffix.lstrip('/')
     if not clean:
         return 400, _json_response({'error': 'No path given'})
+
+    wiki_real = os.path.realpath(WIKI_DIR)
+    base_real = os.path.realpath(BASE_DIR)
+
+    def _resolve_within_allowed_root(abs_path: str):
+        """Resolve abs_path and return it only if it stays inside an allowed root.
+        Returns None on containment failure, NUL-byte inputs, or any realpath error.
+        We resolve BEFORE touching the filesystem (isfile/stat) so a malicious
+        symlink or automount target can't trigger filesystem side effects."""
+        try:
+            real = os.path.realpath(abs_path)
+        except (ValueError, OSError):
+            return None
+        for root in (wiki_real, base_real):
+            try:
+                if os.path.commonpath([real, root]) == root:
+                    return real
+            except ValueError:
+                # commonpath raises on different drives (Windows) or NUL in path
+                continue
+        return None
 
     # Try with and without .md extension
     candidates = [
@@ -140,8 +163,14 @@ def handle_wiki_page(path_suffix: str):
     ]
     page_path = None
     for c in candidates:
-        if os.path.isfile(c) and c.endswith('.md'):
-            page_path = c
+        # Order: resolve → contain → filesystem check → extension check.
+        # isfile() before containment would let a malicious path trigger
+        # filesystem access (automount, network share probe).
+        real = _resolve_within_allowed_root(c)
+        if real is None:
+            continue
+        if real.endswith('.md') and os.path.isfile(real):
+            page_path = real
             break
 
     if not page_path:

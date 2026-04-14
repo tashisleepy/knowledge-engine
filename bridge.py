@@ -501,7 +501,10 @@ def dual_search(query: str, k: int = 10) -> list[dict]:
 
     # --- Layer 2: Memvid semantic search ---
     if not MEMVID_AVAILABLE:
-        return wiki_results + []
+        # Wiki-only mode: return what we've collected so far (all layer='wiki'),
+        # sorted by score. Do NOT reference wiki_results here — it's not defined until later.
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results
 
     try:
         safe_query = _sanitize_memvid_query(query)
