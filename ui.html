@@ -2126,12 +2126,21 @@ function renderMonthInNutshell(d) {
               </tr>
 
               ${(h.tool_breakdown || []).map(t => `
+              ${t.built > 0 ? `
               <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
-                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">${t.t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}s</td>
-                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${t.c}</td>
-                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${t.rate} hrs</td>
-                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${t.hrs}</td>
-              </tr>`).join('')}
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">${t.t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}s <span style="background:rgba(0,200,83,0.2);color:#00C853;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px">BUILT</span></td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${t.built}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${t.built_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${t.built_hrs}</td>
+              </tr>` : ''}
+              ${t.installed > 0 ? `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">${t.t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}s <span style="background:rgba(100,100,255,0.15);color:#9999FF;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px">INSTALLED</span></td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${t.installed}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${t.installed_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${t.installed_hrs}</td>
+              </tr>` : ''}
+              `).join('')}
 
               <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
                 <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">PDF documents</td>
@@ -2167,9 +2176,11 @@ function renderMonthInNutshell(d) {
           </table>
           <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.02);border-radius:6px;border-left:3px solid var(--accent)">
             <div style="font-size:11px;color:var(--text);line-height:1.6">
-              <strong style="color:var(--accent)">Per-artifact rate rationale:</strong> Each hour figure reflects how long a senior specialist would need to produce equivalent quality work from scratch. PDFs/DOCX are multi-page structured reports, PPTX are designed decks, scripts range from 3-8 hrs, full agent systems take 12-25 hrs.
+              <strong style="color:#00C853">BUILT rates</strong> (from scratch): Agent 12h · Project Agent 20h · Skill 8h · Script 5h · Knowledge File 6h · MCP 10h · Prompt 4h · Project 25h. These reflect senior specialist time to produce equivalent quality work from nothing.
               <br><br>
-              <strong style="color:var(--text)">Slight over-count acknowledged:</strong> A PDF built in a session likely also generated 3-5 MD drafts for it. We accept modest over-count (~10-15%) rather than severe under-count that would misrepresent the work delivered. All rates are editable in <code style="background:var(--bg);padding:2px 6px;border-radius:3px">monthly-summary-config.json</code>.
+              <strong style="color:#9999FF">INSTALLED rates</strong> (configured from plugins/marketplaces): 0.5-3 hours per tool. Represents setup, configuration, testing, and integration time - not authoring. This is genuine work but much faster than building from scratch.
+              <br><br>
+              <strong style="color:var(--text)">Full transparency:</strong> All rates editable in <code style="background:var(--bg);padding:2px 6px;border-radius:3px">monthly-summary-config.json</code>. Every tool's BUILT vs INSTALLED status is visible in the detail list below (green NEW / yellow BACKFILL badges).
             </div>
           </div>
         </div>

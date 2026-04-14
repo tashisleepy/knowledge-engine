@@ -54,11 +54,16 @@ TOOLS_GENUINE_NEW=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswit
 TOOLS_BACKFILLED=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill == true)] | length' "$REGISTRY_FILE")
 TOOLS_DUPLICATES=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded == true)] | length' "$REGISTRY_FILE")
 
-# Tools by type (excludes duplicates)
+# Tools by type with built-vs-installed split
 TOOLS_BY_TYPE=$(jq --arg m "$MONTH" '
   [.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true)]
   | group_by(.t)
-  | map({type: .[0].t, count: length})
+  | map({
+      type: .[0].t,
+      count: length,
+      built: [.[] | select(.auto_scanned != true)] | length,
+      installed: [.[] | select(.auto_scanned == true)] | length
+    })
 ' "$REGISTRY_FILE")
 
 # Full tools list with names + descriptions (grouped by type, excludes duplicates)
@@ -146,23 +151,46 @@ HOURS_CALC=$(jq -n \
   '
     ($config[0].hours_multipliers) as $h |
     ($byType[0]) as $types |
+    ($config[0].hours_multipliers._built_from_scratch) as $built_h |
+    ($config[0].hours_multipliers._installed_configured) as $inst_h |
     ($sessions * $h.session_base_overhead) as $session_hours |
     ($pdf * $h.document_pdf) as $pdf_hours |
     ($docx * $h.document_docx) as $docx_hours |
     ($pptx * $h.document_pptx) as $pptx_hours |
     ($md * $h.document_md) as $md_hours |
-    ([$types[] | (
-       if .type == "agent-global" then {t: "agent-global", c: .count, rate: $h.tool_agent_global, hrs: (.count * $h.tool_agent_global)}
-       elif .type == "agent-project" then {t: "agent-project", c: .count, rate: $h.tool_agent_project, hrs: (.count * $h.tool_agent_project)}
-       elif .type == "skill" then {t: "skill", c: .count, rate: $h.tool_skill, hrs: (.count * $h.tool_skill)}
-       elif .type == "script" then {t: "script", c: .count, rate: $h.tool_script, hrs: (.count * $h.tool_script)}
-       elif .type == "knowledge-file" then {t: "knowledge-file", c: .count, rate: $h.tool_knowledge_file, hrs: (.count * $h.tool_knowledge_file)}
-       elif .type == "prompt" then {t: "prompt", c: .count, rate: $h.tool_prompt, hrs: (.count * $h.tool_prompt)}
-       elif .type == "mcp-tool" then {t: "mcp-tool", c: .count, rate: $h.tool_mcp, hrs: (.count * $h.tool_mcp)}
-       elif .type == "project" then {t: "project", c: .count, rate: $h.tool_project, hrs: (.count * $h.tool_project)}
-       else empty end
-    )]) as $tool_breakdown |
-    ($tool_breakdown | map(.hrs) | add // 0) as $tool_hours |
+    # For each type, calculate hours using built + installed split
+    (def type_rate($t; $role): if $role == "built" then
+       if $t == "agent-global" then $built_h.tool_agent_global
+       elif $t == "agent-project" then $built_h.tool_agent_project
+       elif $t == "skill" then $built_h.tool_skill
+       elif $t == "script" then $built_h.tool_script
+       elif $t == "knowledge-file" then $built_h.tool_knowledge_file
+       elif $t == "prompt" then $built_h.tool_prompt
+       elif $t == "mcp-tool" then $built_h.tool_mcp
+       elif $t == "project" then $built_h.tool_project
+       else 0 end
+    else
+       if $t == "agent-global" then $inst_h.tool_agent_global
+       elif $t == "agent-project" then $inst_h.tool_agent_project
+       elif $t == "skill" then $inst_h.tool_skill
+       elif $t == "script" then $inst_h.tool_script
+       elif $t == "knowledge-file" then $inst_h.tool_knowledge_file
+       elif $t == "prompt" then $inst_h.tool_prompt
+       elif $t == "mcp-tool" then $inst_h.tool_mcp
+       elif $t == "project" then $inst_h.tool_project
+       else 0 end
+    end;
+    [$types[] | {
+      t: .type,
+      built: .built,
+      installed: .installed,
+      built_rate: type_rate(.type; "built"),
+      installed_rate: type_rate(.type; "installed"),
+      built_hrs: (.built * type_rate(.type; "built")),
+      installed_hrs: (.installed * type_rate(.type; "installed")),
+      total_hrs: ((.built * type_rate(.type; "built")) + (.installed * type_rate(.type; "installed")))
+    }]) as $tool_breakdown |
+    ($tool_breakdown | map(.total_hrs) | add // 0) as $tool_hours |
     {
       session_hours: $session_hours,
       session_count: $sessions,
