@@ -22,34 +22,12 @@ schema/graph.json
 schema/tags.json
 index.md
 
-# Private wiki content (client data, project memories, brain files)
-wiki/amazon-a-luxe/
-wiki/archived-research-buddy/
-wiki/clean/
-wiki/director-ai-studio/
-wiki/hazel-creator/
-wiki/hum-2/
-wiki/human/
-wiki/ifvg-crt-trading-analyzer/
-wiki/image-replicator/
-wiki/kf-generator/
-wiki/lokl/
-wiki/maya-creator/
-wiki/meals-on-me/
-wiki/p1-creative-director-v3/
-wiki/p2-viddirector-pro-v40-commercial-edition/
-wiki/p3-viddirector-pro-35/
-wiki/prime-frame-research/
-wiki/primeframe/
-wiki/rashi-style/
-wiki/roulette/
-wiki/shared/
-wiki/tashi-10-creators-dream/
-wiki/tashi-claude-architect-v3-143/
-wiki/tashi-kling-prompt/
-wiki/tashi-numerology-queen/
-wiki/tashi-rashi-socials/
-wiki/tashi-style/
-wiki/the-slop-incinerator-x/
-wiki/viral/
+# Private wiki content - exclude all client directories by default.
+# Only the public/demo directories are tracked (whitelisted via negation).
+wiki/*/
+!wiki/_shared/
+!wiki/_templates/
+!wiki/demo-retail/
+
+# Other private operational dirs
 migrations/
