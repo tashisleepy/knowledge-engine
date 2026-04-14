@@ -778,7 +778,7 @@
     <div class="nav-tab" data-tab="wiki" onclick="switchTab('wiki')">Wiki</div>
     <div class="nav-tab" data-tab="entities" onclick="switchTab('entities')">Entities</div>
     <div class="nav-tab" data-tab="health" onclick="switchTab('health')">Health</div>
-    <div class="nav-tab" data-tab="tools" onclick="switchTab('tools')">Tool Caller</div>
+    <div class="nav-tab" data-tab="tools" onclick="switchTab('tools'); ensureToolsLoaded()">Tool Caller</div>
     <div class="nav-tab" data-tab="month" onclick="switchTab('month'); loadMonthInNutshell()">Month in Nutshell</div>
   </div>
   <div class="nav-spacer"></div>
@@ -1857,7 +1857,13 @@ async function loadToolsWithRegistry() {
   }
   renderToolsTable(merged);
 }
-setTimeout(loadToolsWithRegistry, 100);
+// Lazy-load tools table only when tab clicked (was rendering 280+ rows on every page load)
+let TOOLS_LOADED = false;
+function ensureToolsLoaded() {
+  if (TOOLS_LOADED) return;
+  TOOLS_LOADED = true;
+  loadToolsWithRegistry();
+}
 
 // ==================== MONTH IN NUTSHELL ====================
 async function loadMonthInNutshell() {
@@ -1907,6 +1913,14 @@ function renderMonthInNutshell(d) {
         <div style="color:var(--text-dim);font-size:13px;margin-top:4px">${d.period} &nbsp;·&nbsp; Generated ${d.generated_at}</div>
       </div>
 
+      <!-- BACKFILL HONESTY NOTICE -->
+      ${c.tools_backfilled > 0 ? `
+      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text);line-height:1.5">
+          <strong style="color:var(--accent)">Transparency note:</strong> ${c.tools_genuinely_new} of the ${c.tools_registered} tools were built this current session. ${c.tools_backfilled} were cataloged today from earlier work done April 1-13 (we didn't have the tracking system yet). Actual work dates are preserved in each tool's record below. ${c.tools_duplicates_hidden > 0 ? `${c.tools_duplicates_hidden} duplicates of pre-existing Tool Caller items are hidden to prevent double-counting.` : ''}
+        </div>
+      </div>` : ''}
+
       <!-- TOP KPIs -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
         <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
@@ -1915,8 +1929,8 @@ function renderMonthInNutshell(d) {
         </div>
         <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
           <div style="font-size:36px;font-weight:800;color:var(--text)">${c.tools_registered}</div>
-          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Tools Registered</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">+ ${c.tools_updated} updated</div>
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:6px">Tools (unique)</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${c.tools_genuinely_new || 0} new today · ${c.tools_backfilled || 0} cataloged from earlier work</div>
         </div>
         <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
           <div style="font-size:36px;font-weight:800;color:var(--text)">${fmt(c.documents.total)}</div>
@@ -1977,13 +1991,17 @@ function renderMonthInNutshell(d) {
                 <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
                   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
                     <div style="flex:1;min-width:0">
-                      <div style="font-weight:600;color:var(--text);font-size:13px;margin-bottom:4px">${item.name}</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+                        <div style="font-weight:600;color:var(--text);font-size:13px">${item.name}</div>
+                        ${item.is_backfill ? '<div style="background:rgba(255,214,0,0.2);color:#FFD600;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:0.5px">BACKFILL</div>' : '<div style="background:rgba(0,200,83,0.2);color:#00C853;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:0.5px">NEW</div>'}
+                      </div>
                       <div style="color:var(--text-dim);font-size:11.5px;line-height:1.5">${item.description || '(no description)'}</div>
                       ${item.path ? `<div style="color:var(--text-dim);font-size:10px;margin-top:4px;font-family:monospace;opacity:0.6">${item.path}</div>` : ''}
                     </div>
                     <div style="text-align:right;white-space:nowrap">
-                      <div style="color:var(--accent);font-size:10px;font-weight:600">${item.created ? item.created.split(' ')[0] : ''}</div>
-                      <div style="color:var(--text-dim);font-size:9px;margin-top:2px">${item.created ? item.created.split(' ')[1] || '' : ''}</div>
+                      <div style="color:var(--text-dim);font-size:9px">WORK DATE</div>
+                      <div style="color:var(--accent);font-size:11px;font-weight:600">${item.created ? item.created.split(' ')[0] : ''}</div>
+                      ${item.is_backfill && item.registered_at ? `<div style="color:var(--text-dim);font-size:8px;margin-top:4px">cataloged ${item.registered_at.split(' ')[0]}</div>` : ''}
                     </div>
                   </div>
                 </div>

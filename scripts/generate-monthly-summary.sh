@@ -46,24 +46,36 @@ OTHER_INGESTS=$(grep -E "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] INGEST " "$
   | sort -u | wc -l | tr -d ' ')
 [[ -z "$OTHER_INGESTS" ]] && OTHER_INGESTS=0
 
-# Count tool registrations in the month from registry (use created field)
-TOOLS_TOTAL=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m))] | length' "$REGISTRY_FILE")
+# Count tool registrations in the month from registry (EXCLUDE duplicates of hardcoded UI list)
+TOOLS_TOTAL=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true)] | length' "$REGISTRY_FILE")
 
-# Tools by type
+# Backfill vs genuinely-new split
+TOOLS_GENUINE_NEW=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill != true)] | length' "$REGISTRY_FILE")
+TOOLS_BACKFILLED=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill == true)] | length' "$REGISTRY_FILE")
+TOOLS_DUPLICATES=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded == true)] | length' "$REGISTRY_FILE")
+
+# Tools by type (excludes duplicates)
 TOOLS_BY_TYPE=$(jq --arg m "$MONTH" '
-  [.tools[] | select(.created | startswith($m))]
+  [.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true)]
   | group_by(.t)
   | map({type: .[0].t, count: length})
 ' "$REGISTRY_FILE")
 
-# Full tools list with names + descriptions (grouped by type for display)
+# Full tools list with names + descriptions (grouped by type, excludes duplicates)
 TOOLS_DETAIL=$(jq --arg m "$MONTH" '
-  [.tools[] | select(.created | startswith($m))]
+  [.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true)]
   | group_by(.t)
   | map({
       type: .[0].t,
       count: length,
-      items: (. | map({name: .n, description: .d, created: .created, path: .path}))
+      items: (. | map({
+        name: .n,
+        description: .d,
+        created: .created,
+        registered_at: .registered_at,
+        is_backfill: (.is_backfill // false),
+        path: .path
+      }))
     })
 ' "$REGISTRY_FILE")
 
@@ -204,6 +216,9 @@ jq -n \
   --argjson tool_reg "$TOOL_REG_COUNT" \
   --argjson tool_upd "$TOOL_UPD_COUNT" \
   --argjson tool_log_entries "$TOOL_LOG_ENTRIES" \
+  --argjson genuine_new "$TOOLS_GENUINE_NEW" \
+  --argjson backfilled "$TOOLS_BACKFILLED" \
+  --argjson duplicates "$TOOLS_DUPLICATES" \
   --argjson hours "$HOURS_CALC" \
   --argjson cons_rate "$CONS_RATE" \
   --argjson real_rate "$REAL_RATE" \
@@ -224,6 +239,9 @@ jq -n \
       tools_updated: $tool_upd,
       tools_total_in_month: $tools_total,
       tools_log_entries: $tool_log_entries,
+      tools_genuinely_new: $genuine_new,
+      tools_backfilled: $backfilled,
+      tools_duplicates_hidden: $duplicates,
       documents: {
         pdf: $pdf,
         docx: $docx,
