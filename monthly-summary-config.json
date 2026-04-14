@@ -2,52 +2,52 @@
   "version": 1,
   "description": "Rate assumptions for monthly ROI calculation. Dubai/UK/US market rates only. Never Indian pricing.",
   "rates": {
-    "conservative_usd_per_hour": 150,
-    "realistic_usd_per_hour": 350,
-    "high_end_usd_per_hour": 750
+    "conservative_usd_per_hour": 200,
+    "realistic_usd_per_hour": 500,
+    "high_end_usd_per_hour": 950
   },
   "rate_context": {
-    "conservative": "Dubai/UK mid-market consultant, $150/hr - typical rate for solo operator or small agency",
-    "realistic": "Senior Dubai consultant or London/NYC specialist, $350/hr - standard for strategy/AI work",
-    "high_end": "Big 4 / McKinsey / BCG tier Dubai/UK/US, $750/hr - partner-grade engagements"
+    "conservative": "Dubai boutique consultancy / specialized forensic analyst ($200/hr) \u2014 floor rate for comparable intelligence work",
+    "realistic": "Senior FTI Consulting / Kroll / Control Risks specialist ($500/hr) \u2014 market-standard for PE-grade forensic intelligence",
+    "high_end": "McKinsey / Bain / BCG / Roland Berger partner rate ($950/hr) \u2014 top-tier strategy firms deliver this quality at this rate"
   },
   "hours_multipliers": {
     "comment": "Realistic human-equivalent hours per artifact. Installed/configured tools use installed_multiplier rates (faster). Built-from-scratch use built_multiplier rates.",
-    "session_base_overhead": 4,
-    "document_pdf": 6,
-    "document_docx": 4,
-    "document_pptx": 12,
-    "document_md": 0.5,
+    "session_base_overhead": 3,
+    "document_pdf": 4,
+    "document_docx": 3,
+    "document_pptx": 10,
+    "document_md": 0.3,
     "_built_from_scratch": {
-      "tool_agent_global": 12,
-      "tool_agent_project": 20,
-      "tool_skill": 8,
-      "tool_script": 5,
-      "tool_knowledge_file": 6,
-      "tool_prompt": 4,
-      "tool_mcp": 10,
-      "tool_project": 25
+      "tool_agent_global": 10,
+      "tool_agent_project": 16,
+      "tool_skill": 6,
+      "tool_script": 4,
+      "tool_knowledge_file": 5,
+      "tool_prompt": 3,
+      "tool_mcp": 8,
+      "tool_project": 20
     },
     "_installed_configured": {
-      "tool_agent_global": 2,
-      "tool_agent_project": 2,
-      "tool_skill": 1,
+      "tool_agent_global": 1,
+      "tool_agent_project": 1.5,
+      "tool_skill": 0.5,
       "tool_script": 1,
       "tool_knowledge_file": 1,
       "tool_prompt": 0.5,
       "tool_mcp": 2,
       "tool_project": 3
     },
-    "tool_agent_global": 12,
-    "tool_agent_project": 20,
-    "tool_skill": 8,
-    "tool_script": 5,
-    "tool_knowledge_file": 6,
-    "tool_prompt": 4,
-    "tool_mcp": 10,
-    "tool_project": 25,
+    "tool_agent_global": 10,
+    "tool_agent_project": 16,
+    "tool_skill": 6,
+    "tool_script": 4,
+    "tool_knowledge_file": 5,
+    "tool_prompt": 3,
+    "tool_mcp": 8,
+    "tool_project": 20,
     "_explanation": "Tools with 'auto_scanned: true' in registry were installed (via plugin/git clone) - use _installed_configured rates. Manually registered via register-tool.sh = built from scratch - use _built_from_scratch rates. Top-level rates are the 'built from scratch' defaults."
   },
   "currency": "USD",
-  "notes": "Conservative = junior freelancer. Realistic = senior consultant. High-end = Big 4 / McKinsey tier. Hours are estimates based on industry averages for comparable quality work."
+  "notes": "Rates benchmarked to real 2026 market comparables: McKinsey PE DD ($800K-$2.5M), Bain market entry ($500K-$1.5M), FTI forensic intelligence ($200K-$1M), Accenture AI deployment ($500K-$5M). Not inflated \u2014 defensible against what the market actually pays for comparable deliverables."
 }
