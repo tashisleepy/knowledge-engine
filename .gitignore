@@ -21,6 +21,7 @@ schema/entities.json
 schema/graph.json
 schema/tags.json
 index.md
+tools-registry.json
 
 # Private wiki content - exclude all client directories by default.
 # Only the public/demo directories are tracked (whitelisted via negation).

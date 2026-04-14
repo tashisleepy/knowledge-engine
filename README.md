@@ -193,6 +193,40 @@ The script reads timestamped entries from `log.md`, filters by your date range, 
 
 ---
 
+## Register new tools, skills, and agents as you build them
+
+Every time you create a new AI tool - an agent, a skill, an MCP tool, a script, a knowledge file, a prompt - register it so it shows up in your Tools tab and future work reports.
+
+### Just ask Claude
+
+```
+"Register this new script as a tool - it does {description}"
+"Log the agent I just built into the tools registry"
+"Add this skill to my local tools tab"
+```
+
+### Or run it yourself
+
+```bash
+./scripts/register-tool.sh \
+  --name "tool-name" \
+  --type agent-global \
+  --command "How to invoke it" \
+  --description "One-line description" \
+  --session "session-YYYY-MM-DD-{slug}" \
+  --path "relative/path/to/tool"
+```
+
+Valid types: `agent-global`, `agent-project`, `skill`, `mcp-tool`, `script`, `project`, `knowledge-file`, `prompt`
+
+What it does:
+- Appends entry to `tools-registry.json` (LOCAL only, gitignored)
+- Prepends `TOOL-REGISTERED` entry to `log.md` with timestamp
+- Tool appears in the Web UI Tools tab (at `http://localhost:3141`)
+- Shows up in date-range reports so you can see what you built this quarter
+
+---
+
 ## How do you record your sessions?
 
 Two ways. One automatic. One manual for the high-signal stuff.
