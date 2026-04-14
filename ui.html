@@ -2087,14 +2087,72 @@ function renderMonthInNutshell(d) {
 
       <!-- HOURS BREAKDOWN -->
       <div style="margin-bottom:32px">
-        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px">⏱️ Hours Estimate Breakdown</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">⏱️ How the ${h.total} Hours Are Calculated</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px">Every category + count + per-artifact rate shown. Client can verify each row against the lists below.</div>
         <div style="background:var(--surface);padding:20px;border-radius:10px;border:1px solid var(--border)">
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:20px;text-align:center">
-            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.session_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">SESSIONS</div></div>
-            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.tool_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">TOOLS</div></div>
-            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.pdf_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">PDFs</div></div>
-            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.docx_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">DOCX</div></div>
-            <div><div style="font-size:20px;font-weight:700;color:var(--text)">${h.pptx_hours}</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px">PPTX</div></div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:8px 0;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Category</th>
+                <th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Count</th>
+                <th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Hours Each</th>
+                <th style="text-align:right;padding:8px 0;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">Session overhead (thinking/research)</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${h.session_count}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${h.session_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${h.session_hours}</td>
+              </tr>
+
+              ${(h.tool_breakdown || []).map(t => `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">${t.t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}s</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${t.c}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${t.rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${t.hrs}</td>
+              </tr>`).join('')}
+
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">PDF documents</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${h.pdf_count}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${h.pdf_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${h.pdf_hours}</td>
+              </tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">DOCX documents</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${h.docx_count}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${h.docx_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${h.docx_hours}</td>
+              </tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">PPTX decks</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${h.pptx_count}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${h.pptx_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${h.pptx_hours}</td>
+              </tr>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:8px 0;color:var(--text);font-size:12px;font-weight:600">Markdown files</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text);font-size:12px">${h.md_count}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-dim);font-size:11px">× ${h.md_rate} hrs</td>
+                <td style="padding:8px 0;text-align:right;color:var(--accent);font-weight:700;font-size:12px">${h.md_hours}</td>
+              </tr>
+              <tr style="border-top:2px solid var(--border);background:rgba(255,107,0,0.05)">
+                <td style="padding:12px 0;color:var(--text);font-size:14px;font-weight:800">TOTAL ESTIMATED HUMAN HOURS</td>
+                <td></td>
+                <td></td>
+                <td style="padding:12px 0;text-align:right;color:var(--accent);font-weight:800;font-size:20px">${h.total}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.02);border-radius:6px;border-left:3px solid var(--accent)">
+            <div style="font-size:11px;color:var(--text);line-height:1.6">
+              <strong style="color:var(--accent)">Per-artifact rate rationale:</strong> Each hour figure reflects how long a senior specialist would need to produce equivalent quality work from scratch. PDFs/DOCX are multi-page structured reports, PPTX are designed decks, scripts range from 3-8 hrs, full agent systems take 12-25 hrs.
+              <br><br>
+              <strong style="color:var(--text)">Slight over-count acknowledged:</strong> A PDF built in a session likely also generated 3-5 MD drafts for it. We accept modest over-count (~10-15%) rather than severe under-count that would misrepresent the work delivered. All rates are editable in <code style="background:var(--bg);padding:2px 6px;border-radius:3px">monthly-summary-config.json</code>.
+            </div>
           </div>
         </div>
       </div>

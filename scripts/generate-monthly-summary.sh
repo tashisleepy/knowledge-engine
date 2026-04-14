@@ -35,11 +35,8 @@ CONS_RATE=$(jq '.rates.conservative_usd_per_hour' "$CONFIG_FILE")
 REAL_RATE=$(jq '.rates.realistic_usd_per_hour' "$CONFIG_FILE")
 HIGH_RATE=$(jq '.rates.high_end_usd_per_hour' "$CONFIG_FILE")
 
-# Count UNIQUE sessions (by wiki file path, session-* prefixed only, not general ingests)
-SESSION_COUNT=$(grep -E "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] INGEST " "$LOG_FILE" 2>/dev/null \
-  | sed -nE 's|.*-> ([^ ]+) \(.*|\1|p' \
-  | grep "session-${MONTH}-" \
-  | sort -u | wc -l | tr -d ' ')
+# Count UNIQUE sessions from actual wiki files (ground truth - not log entries)
+SESSION_COUNT=$(find "$ROOT_DIR/wiki" -name "session-${MONTH}-*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
 [[ -z "$SESSION_COUNT" ]] && SESSION_COUNT=0
 
 # Separately count non-session ingests (bridge ingests - knowledge files, memory files, etc.)
@@ -92,8 +89,11 @@ PPTX_COUNT=$(find ~/Downloads -type f -name "*.pptx" -newermt "$START_DATE" 2>/d
 MD_COUNT=$(find ~/Downloads -type f -name "*.md" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
 
 # TOOL-REGISTERED count in log
-TOOL_REG_COUNT=$(grep -cE "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] TOOL-REGISTERED " "$LOG_FILE" 2>/dev/null || echo 0)
+# Use UNIQUE tool count from registry (ground truth), not log entries (may include duplicates)
+TOOL_REG_COUNT=$TOOLS_TOTAL
 TOOL_UPD_COUNT=$(grep -cE "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] TOOL-UPDATED " "$LOG_FILE" 2>/dev/null || echo 0)
+# Also expose log entry counts for transparency (may exceed unique count)
+TOOL_LOG_ENTRIES=$(grep -cE "^## \[${MONTH}-[0-9]{2} [0-9]{2}:[0-9]{2}\] TOOL-REGISTERED " "$LOG_FILE" 2>/dev/null || echo 0)
 
 # Updated tools with version info (current version >= 2 = was updated)
 TOOLS_UPDATED=$(jq --arg m "$MONTH" '
@@ -122,38 +122,54 @@ else
   SESSIONS_UPDATED='[]'
 fi
 
-# Compute estimated hours using multipliers from config
+# Compute estimated hours using REALISTIC multipliers from config
 HOURS_CALC=$(jq -n \
   --argjson sessions "$SESSION_COUNT" \
   --argjson pdf "$PDF_COUNT" \
   --argjson docx "$DOCX_COUNT" \
   --argjson pptx "$PPTX_COUNT" \
+  --argjson md "$MD_COUNT" \
   --slurpfile config "$CONFIG_FILE" \
   --slurpfile byType <(echo "$TOOLS_BY_TYPE") \
   '
     ($config[0].hours_multipliers) as $h |
     ($byType[0]) as $types |
-    ($sessions * $h.session_default) as $session_hours |
+    ($sessions * $h.session_base_overhead) as $session_hours |
     ($pdf * $h.document_pdf) as $pdf_hours |
     ($docx * $h.document_docx) as $docx_hours |
     ($pptx * $h.document_pptx) as $pptx_hours |
+    ($md * $h.document_md) as $md_hours |
     ([$types[] | (
-       if .type == "agent-global" or .type == "agent-project" then .count * $h.tool_agent
-       elif .type == "skill" then .count * $h.tool_skill
-       elif .type == "script" then .count * $h.tool_script
-       elif .type == "knowledge-file" then .count * $h.tool_knowledge_file
-       elif .type == "prompt" then .count * $h.tool_prompt
-       elif .type == "mcp-tool" then .count * $h.tool_mcp
-       elif .type == "project" then .count * $h.tool_project
-       else 0 end
-    )] | add // 0) as $tool_hours |
+       if .type == "agent-global" then {t: "agent-global", c: .count, rate: $h.tool_agent_global, hrs: (.count * $h.tool_agent_global)}
+       elif .type == "agent-project" then {t: "agent-project", c: .count, rate: $h.tool_agent_project, hrs: (.count * $h.tool_agent_project)}
+       elif .type == "skill" then {t: "skill", c: .count, rate: $h.tool_skill, hrs: (.count * $h.tool_skill)}
+       elif .type == "script" then {t: "script", c: .count, rate: $h.tool_script, hrs: (.count * $h.tool_script)}
+       elif .type == "knowledge-file" then {t: "knowledge-file", c: .count, rate: $h.tool_knowledge_file, hrs: (.count * $h.tool_knowledge_file)}
+       elif .type == "prompt" then {t: "prompt", c: .count, rate: $h.tool_prompt, hrs: (.count * $h.tool_prompt)}
+       elif .type == "mcp-tool" then {t: "mcp-tool", c: .count, rate: $h.tool_mcp, hrs: (.count * $h.tool_mcp)}
+       elif .type == "project" then {t: "project", c: .count, rate: $h.tool_project, hrs: (.count * $h.tool_project)}
+       else empty end
+    )]) as $tool_breakdown |
+    ($tool_breakdown | map(.hrs) | add // 0) as $tool_hours |
     {
       session_hours: $session_hours,
+      session_count: $sessions,
+      session_rate: $h.session_base_overhead,
       tool_hours: $tool_hours,
+      tool_breakdown: $tool_breakdown,
       pdf_hours: $pdf_hours,
+      pdf_count: $pdf,
+      pdf_rate: $h.document_pdf,
       docx_hours: $docx_hours,
+      docx_count: $docx,
+      docx_rate: $h.document_docx,
       pptx_hours: $pptx_hours,
-      total: ($session_hours + $tool_hours + $pdf_hours + $docx_hours + $pptx_hours)
+      pptx_count: $pptx,
+      pptx_rate: $h.document_pptx,
+      md_hours: $md_hours,
+      md_count: $md,
+      md_rate: $h.document_md,
+      total: ($session_hours + $tool_hours + $pdf_hours + $docx_hours + $pptx_hours + $md_hours)
     }
   '
 )
@@ -187,6 +203,7 @@ jq -n \
   --argjson md "$MD_COUNT" \
   --argjson tool_reg "$TOOL_REG_COUNT" \
   --argjson tool_upd "$TOOL_UPD_COUNT" \
+  --argjson tool_log_entries "$TOOL_LOG_ENTRIES" \
   --argjson hours "$HOURS_CALC" \
   --argjson cons_rate "$CONS_RATE" \
   --argjson real_rate "$REAL_RATE" \
@@ -206,6 +223,7 @@ jq -n \
       tools_registered: $tool_reg,
       tools_updated: $tool_upd,
       tools_total_in_month: $tools_total,
+      tools_log_entries: $tool_log_entries,
       documents: {
         pdf: $pdf,
         docx: $docx,
