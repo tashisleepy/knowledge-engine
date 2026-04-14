@@ -229,7 +229,28 @@ What it does:
 
 ## How do you record your sessions?
 
-Two ways. One automatic. One manual for the high-signal stuff.
+Three ways. Each idempotent (run 100x = same result, no duplicates).
+
+### Quickest: save-session.sh (recommended)
+
+```bash
+./scripts/save-session.sh \
+  --slug "my-topic" \
+  --client {client-slug} \
+  --title "Session Title" \
+  --summary "What this session accomplished" \
+  --tags "tag1,tag2,tag3" \
+  --duration 1.5
+```
+
+What it guarantees:
+- If session-{date}-{slug}.md already exists: UPDATES in place, preserves `created`, sets new `updated`
+- If new: CREATES source + wiki + log + index entries
+- Index row: only one per session (updates in place, never duplicates)
+- Log timeline: full history preserved (INGEST + subsequent UPDATEs)
+- Pressure-tested: run it 5 times in a row = same end state, with full version history
+
+
 
 ### Automatic (every ingest)
 
