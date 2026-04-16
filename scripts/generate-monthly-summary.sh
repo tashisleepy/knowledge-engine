@@ -54,6 +54,10 @@ TOOLS_GENUINE_NEW=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswit
 TOOLS_BACKFILLED=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill == true)] | length' "$REGISTRY_FILE")
 TOOLS_DUPLICATES=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded == true)] | length' "$REGISTRY_FILE")
 
+# Within "genuinely-new": split built-from-scratch (manually registered) vs installed-configured (auto-scanned from plugins/marketplaces)
+TOOLS_BUILT_FROM_SCRATCH=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill != true) | select(.auto_scanned != true)] | length' "$REGISTRY_FILE")
+TOOLS_INSTALLED_CONFIGURED=$(jq --arg m "$MONTH" '[.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true) | select(.is_backfill != true) | select(.auto_scanned == true)] | length' "$REGISTRY_FILE")
+
 # Tools by type with built-vs-installed split
 TOOLS_BY_TYPE=$(jq --arg m "$MONTH" '
   [.tools[] | select(.created | startswith($m)) | select(.duplicate_of_hardcoded != true)]
@@ -99,11 +103,31 @@ SESSIONS_LIST=$(find "$ROOT_DIR/wiki" -name "session-${MONTH}-*.md" -type f 2>/d
     done \
   | jq -s 'sort_by(.date) | reverse' 2>/dev/null || echo '[]')
 
-# Documents count in Downloads from month start
-PDF_COUNT=$(find ~/Downloads -type f -name "*.pdf" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
-DOCX_COUNT=$(find ~/Downloads -type f -name "*.docx" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
-PPTX_COUNT=$(find ~/Downloads -type f -name "*.pptx" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
-MD_COUNT=$(find ~/Downloads -type f -name "*.md" -newermt "$START_DATE" 2>/dev/null | wc -l | tr -d ' ')
+# Document count: scan the workspace containing this repo for real work artifacts, excluding noise
+# (session auto-captures, vendored deps, build output, virtualenvs).
+# ~/Downloads is intentionally skipped — it's a dumping ground for invoices/receipts/screenshots
+# that have nothing to do with work output and inflate the count dishonestly.
+# Override with DOC_SCAN_ROOT env var if your work lives elsewhere.
+DOC_SCAN_ROOT="${DOC_SCAN_ROOT:-$(dirname "$ROOT_DIR")}"
+DOC_EXCLUDES=(
+  -not -path "*/.git/*"
+  -not -path "*/node_modules/*"
+  -not -path "*/__pycache__/*"
+  -not -path "*/.venv/*"
+  -not -path "*/venv/*"
+  -not -path "*/.next/*"
+  -not -path "*/dist/*"
+  -not -path "*/build/*"
+  -not -path "*/knowledge-engine/sources/conversations/*"
+  -not -path "*/knowledge-engine/sources/claude-export/*"
+  -not -path "*/knowledge-engine/memvid/*"
+  -not -path "*/knowledge-engine/wiki/*"
+  -not -path "*/knowledge-engine/schema/*"
+)
+PDF_COUNT=$(find "$DOC_SCAN_ROOT" -type f -name "*.pdf"  -newermt "$START_DATE" "${DOC_EXCLUDES[@]}" 2>/dev/null | wc -l | tr -d ' ')
+DOCX_COUNT=$(find "$DOC_SCAN_ROOT" -type f -name "*.docx" -newermt "$START_DATE" "${DOC_EXCLUDES[@]}" 2>/dev/null | wc -l | tr -d ' ')
+PPTX_COUNT=$(find "$DOC_SCAN_ROOT" -type f -name "*.pptx" -newermt "$START_DATE" "${DOC_EXCLUDES[@]}" 2>/dev/null | wc -l | tr -d ' ')
+MD_COUNT=$(find "$DOC_SCAN_ROOT"  -type f -name "*.md"   -newermt "$START_DATE" "${DOC_EXCLUDES[@]}" 2>/dev/null | wc -l | tr -d ' ')
 
 # TOOL-REGISTERED count in log
 # Use UNIQUE tool count from registry (ground truth), not log entries (may include duplicates)
@@ -247,6 +271,8 @@ jq -n \
   --argjson genuine_new "$TOOLS_GENUINE_NEW" \
   --argjson backfilled "$TOOLS_BACKFILLED" \
   --argjson duplicates "$TOOLS_DUPLICATES" \
+  --argjson built_from_scratch "$TOOLS_BUILT_FROM_SCRATCH" \
+  --argjson installed_configured "$TOOLS_INSTALLED_CONFIGURED" \
   --argjson hours "$HOURS_CALC" \
   --argjson cons_rate "$CONS_RATE" \
   --argjson real_rate "$REAL_RATE" \
@@ -268,6 +294,8 @@ jq -n \
       tools_total_in_month: $tools_total,
       tools_log_entries: $tool_log_entries,
       tools_genuinely_new: $genuine_new,
+      tools_built_from_scratch: $built_from_scratch,
+      tools_installed_configured: $installed_configured,
       tools_backfilled: $backfilled,
       tools_duplicates_hidden: $duplicates,
       documents: {

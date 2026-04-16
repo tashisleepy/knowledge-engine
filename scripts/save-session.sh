@@ -253,3 +253,13 @@ echo "Index:   $INDEX_FILE (row $([ "$ACTION" = "INGEST" ] && echo "added" || ec
 echo ""
 echo "Verify with:"
 echo "  ./scripts/report.sh --since $DATE | head -20"
+
+# Auto-regenerate monthly summary so Month-in-a-Nutshell dashboard stays current.
+# Backgrounded so it never blocks the session save. Silent on failure (regen is best-effort).
+# Skip with NO_AUTO_REGEN=1 ./scripts/save-session.sh ...
+if [[ "${NO_AUTO_REGEN:-0}" != "1" ]] && [[ -x "$SCRIPT_DIR/generate-monthly-summary.sh" ]]; then
+  (
+    "$SCRIPT_DIR/generate-monthly-summary.sh" >/dev/null 2>&1 || true
+  ) &
+  disown 2>/dev/null || true
+fi
