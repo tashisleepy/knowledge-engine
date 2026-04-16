@@ -1922,7 +1922,7 @@ function renderMonthInNutshell(d) {
       ${c.tools_backfilled > 0 ? `
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.3);border-radius:8px;padding:12px 16px;margin-bottom:16px">
         <div style="font-size:11px;color:var(--text);line-height:1.5">
-          <strong style="color:var(--accent)">Transparency note:</strong> ${c.tools_genuinely_new} of the ${c.tools_registered} tools were built this current session. ${c.tools_backfilled} were cataloged today from earlier work done April 1-13 (we didn't have the tracking system yet). Actual work dates are preserved in each tool's record below. ${c.tools_duplicates_hidden > 0 ? `${c.tools_duplicates_hidden} duplicates of pre-existing Tool Caller items are hidden to prevent double-counting.` : ''}
+          <strong style="color:var(--accent)">Transparency note:</strong> ${c.tools_genuinely_new} of the ${c.tools_registered} tools were built across ${d.month_label}'s ${c.sessions} session${c.sessions === 1 ? '' : 's'}. ${c.tools_backfilled} were retroactively cataloged from earlier work in the month (before the tracking system was in place). Actual work dates are preserved in each tool's record below. ${c.tools_duplicates_hidden > 0 ? `${c.tools_duplicates_hidden} duplicate${c.tools_duplicates_hidden === 1 ? '' : 's'} of pre-existing items ${c.tools_duplicates_hidden === 1 ? 'is' : 'are'} hidden to prevent double-counting.` : ''}
         </div>
       </div>` : ''}
 
